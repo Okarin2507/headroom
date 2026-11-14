@@ -142,6 +142,7 @@ t.group("antigravity", function()
     env.serve(host, {
       ["loadCodeAssist"] = '{"paidTier":{"name":"Google AI Pro"}}',
       ["retrieveUserQuotaSummary"] = opts.quota or env.fixture("antigravity_quota.json"),
+      ["fetchAvailableModels"] = opts.models,
     })
     return host, p, ctx
   end
@@ -184,6 +185,51 @@ t.group("antigravity", function()
     t.eq(req.method, "POST")
     t.eq(env.headerOf(req, "User-Agent"), "antigravity")
     t.eq(commands(host)[1], KEYRING)
+  end)
+
+  t.test("Gemini's shared limit comes from the model list when the summary leaves it out", function()
+    local host, p, ctx = setup({
+      keyring = session(FRESH),
+      quota = env.fixture("antigravity_quota_3p_only.json"),
+      models = env.fixture("antigravity_models.json"),
+    })
+    local snap, err = fetch(p, ctx)
+    t.eq(err, nil)
+    local w = byId(snap.windows)
+    t.eq(#snap.windows, 3, "two Claude & GPT windows plus one Gemini")
+    t.eq(w["gemini-5h"].label, "Gemini · Session")
+    t.eq(w["gemini-5h"].kind, "session")
+    t.near(w["gemini-5h"].usedPercent, 47.261155, 1e-5)
+    t.eq(w["gemini-5h"].resetsAt, 1790009031)
+    t.eq(w["gemini-5h"].periodSeconds, 5 * 3600)
+    local urls = {}
+    for _, req in host.requests do
+      table.insert(urls, req.url)
+    end
+    t.ok(table.concat(urls, " "):find("daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels", 1, true) ~= nil, "asks the CLI's host")
+  end)
+
+  t.test("the model list is not asked for when the summary already has Gemini, and its failure is harmless", function()
+    local host, p, ctx = setup({ keyring = session(FRESH), models = env.fixture("antigravity_models.json") })
+    local snap = fetch(p, ctx)
+    t.eq(#snap.windows, 4)
+    for _, req in host.requests do
+      t.ok(req.url:find("fetchAvailableModels", 1, true) == nil, "not requested")
+    end
+
+    local _, p2, ctx2 = setup({ keyring = session(FRESH), quota = env.fixture("antigravity_quota_3p_only.json") })
+    local snap2, err2 = fetch(p2, ctx2) -- the models route answers 404
+    t.eq(err2, nil)
+    t.eq(#snap2.windows, 2)
+  end)
+
+  t.test("models without a usable quota never become a window", function()
+    local _, p, ctx = env.provider("antigravity")
+    t.eq(#p.parseModels({ models = { ["gemini-3-flash"] = { quotaInfo = { remainingFraction = 1.5, resetTime = FRESH } } } }, ctx), 0)
+    t.eq(#p.parseModels({ models = { ["gemini-3-flash"] = { quotaInfo = { resetTime = FRESH } } } }, ctx), 0, "no fraction is unknown, not 0%")
+    t.eq(#p.parseModels({ models = { ["claude-opus-5-5-low"] = { quotaInfo = { remainingFraction = 0.5, resetTime = FRESH } } } }, ctx), 0)
+    t.eq(#p.parseModels({}, ctx), 0)
+    t.eq(#p.parseModels(nil, ctx), 0)
   end)
 
   t.test("go-keyring base64 wrapping and the CLI token file are understood", function()

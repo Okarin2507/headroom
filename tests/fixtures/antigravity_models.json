@@ -1,0 +1,36 @@
+{
+  "models": {
+    "gemini-3-flash": {
+      "displayName": "Gemini 3 Flash",
+      "quotaInfo": {
+        "remainingFraction": 0.52738845,
+        "resetTime": "2026-09-21T16:43:51Z"
+      }
+    },
+    "gemini-2.5-pro": {
+      "displayName": "Gemini 2.5 Pro",
+      "quotaInfo": {
+        "remainingFraction": 0.52738845,
+        "resetTime": "2026-09-21T16:43:51Z"
+      }
+    },
+    "gemini-3.8-flash-tiered": {
+      "quotaInfo": {
+        "remainingFraction": 0.52738845,
+        "resetTime": "2026-09-21T16:43:51Z"
+      }
+    },
+    "claude-opus-5-5-low": {
+      "displayName": "Claude Opus 5.5 (Low)",
+      "quotaInfo": {
+        "remainingFraction": 1,
+        "resetTime": "2026-09-21T18:32:48Z"
+      }
+    },
+    "chat_23310": {
+      "quotaInfo": {
+        "remainingFraction": 1
+      }
+    }
+  }
+}

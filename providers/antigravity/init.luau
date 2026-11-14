@@ -13,7 +13,10 @@
 -- minutes, so a dead session does not spawn agy on every refresh).
 --
 -- Endpoints: POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary,
--- and :loadCodeAssist for the plan name (at most every 6 hours). Undocumented. It only answers clients that
+-- :fetchAvailableModels on the daily host the CLI itself uses (each model's
+-- quotaInfo: how Gemini's shared limit is reported, which the summary leaves
+-- out for some accounts), and :loadCodeAssist for the plan name (at most every
+-- 6 hours). Undocumented. It only answers clients that
 -- identify as Antigravity, so this adapter's User-Agent is "antigravity"
 -- rather than Headroom's own. Plans without Antigravity quota get 403
 -- SUBSCRIPTION_REQUIRED, reported as no_plan rather than as a sign-in problem.
@@ -31,6 +34,8 @@ local CLIENT_METADATA = '{"metadata":{"ideType":"ANTIGRAVITY","platform":"PLATFO
 -- The plan changes rarely; ask for it at most this often.
 local PLAN_TTL = 6 * 3600
 local QUOTA_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
+-- The CLI's own host: the production one reports Gemini's quota as untouched.
+local MODELS_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
 local SESSION_SECONDS = model.SESSION_SECONDS
 local WEEK_SECONDS = model.WEEK_SECONDS
 
@@ -169,6 +174,78 @@ local function parse(data, ctx): (model.Snapshot?, model.ProviderError?)
   return model.snapshot({ plan = nil, windows = windows, notes = {}, fetchedAt = ctx.now() }), nil
 end
 
+-- Gemini's limit from the model list. Every Gemini model carries the same
+-- quotaInfo when they share one limit, so models are grouped by it: one window
+-- per distinct (fraction, reset). Exposed for tests. Returns {} when the
+-- response has no usable quotaInfo.
+local function parseModels(data, ctx): { model.Window }
+  local models = if type(data) == "table" then data.models else nil
+  if type(models) ~= "table" then
+    return {}
+  end
+  local buckets, order = {}, {}
+  for id, entry in models do
+    local quota = type(entry) == "table" and entry.quotaInfo or nil
+    local remaining = type(quota) == "table" and tonumber(quota.remainingFraction) or nil
+    local resetsAt = type(quota) == "table" and time.parseIso8601(quota.resetTime) or nil
+    if
+      type(id) == "string" and id:lower():find("gemini", 1, true)
+      and remaining ~= nil and remaining == remaining and remaining >= 0 and remaining <= 1
+      and resetsAt ~= nil
+    then
+      local key = `{remaining}|{resetsAt}`
+      if buckets[key] == nil then
+        buckets[key] = { remaining = remaining, resetsAt = resetsAt }
+        table.insert(order, key)
+      end
+    end
+  end
+  table.sort(order) -- the same response always gives the same window order
+  local windows = {}
+  for i, key in order do
+    local bucket = buckets[key]
+    table.insert(windows, model.window({
+      -- Stable across resets, so a reset is seen as one (notifications, pacing).
+      id = if i == 1 then "gemini-5h" else `gemini-5h-{i}`,
+      kind = "session",
+      label = `Gemini · {ctx.tr("window.session")}`,
+      usedPercent = (1 - bucket.remaining) * 100,
+      resetsAt = bucket.resetsAt,
+      periodSeconds = SESSION_SECONDS,
+    }))
+  end
+  return windows
+end
+
+local function hasGemini(windows: { model.Window }): boolean
+  for _, w in windows do
+    if w.label:sub(1, 6) == "Gemini" then
+      return true
+    end
+  end
+  return false
+end
+
+-- Best effort, like the plan: a failure leaves Gemini out and never fails the fetch.
+local function withGemini(ctx, headers, snapshot: model.Snapshot?, done: (model.Snapshot?) -> ())
+  if snapshot ~= nil and hasGemini(snapshot.windows) then
+    done(snapshot)
+    return
+  end
+  ctx.postJson(MODELS_URL, headers, "{}", function(data, err)
+    local windows = if err == nil then parseModels(data, ctx) else {}
+    if #windows == 0 then
+      done(snapshot)
+      return
+    end
+    snapshot = snapshot or model.snapshot({ windows = {}, notes = {}, fetchedAt = ctx.now() })
+    for _, w in windows do
+      table.insert(snapshot.windows, w)
+    end
+    done(snapshot)
+  end)
+end
+
 -- "Google AI Pro" from loadCodeAssist; paidTier wins over currentTier, which
 -- reads "free-tier" even for paid Google AI accounts.
 local function planFrom(data): string?
@@ -215,13 +292,15 @@ local function query(ctx, session: Session, done)
       return
     end
     local snapshot, parseErr = parse(data, ctx)
-    if snapshot == nil then
-      done(nil, parseErr)
-      return
-    end
-    withPlan(ctx, headers, function(plan)
-      snapshot.plan = plan
-      done(snapshot, nil)
+    withGemini(ctx, headers, snapshot, function(complete)
+      if complete == nil then
+        done(nil, parseErr)
+        return
+      end
+      withPlan(ctx, headers, function(plan)
+        complete.plan = plan
+        done(complete, nil)
+      end)
     end)
   end, classify)
 end
@@ -283,4 +362,5 @@ return provider.define({
   end,
 
   parse = parse,
+  parseModels = parseModels,
 })
