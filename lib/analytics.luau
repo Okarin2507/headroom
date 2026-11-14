@@ -20,18 +20,14 @@ M.COMMAND = "python3"
 local TIMEOUT_MS = 60000
 
 -- The numbers one period (or model, or day) carries.
---   fresh        input + output + cache writes: what the model had to process anew
---   input        input not served from cache
+--   total        input + output
+--   input        prompt tokens the model read anew (not re-served from the prompt cache)
 --   output       generated tokens, thinking included
---   cacheRead    input served from the prompt cache (cheap, and large)
---   cacheWrite   input written to the cache
 --   messages     model responses
 export type Totals = {
-  fresh: number,
+  total: number,
   input: number,
   output: number,
-  cacheRead: number,
-  cacheWrite: number,
   messages: number,
 }
 
@@ -55,13 +51,11 @@ end
 
 local function totals(raw: any): Totals
   raw = if type(raw) == "table" then raw else {}
-  local input, output, cacheWrite = num(raw.input), num(raw.output), num(raw.cache_write)
+  local input, output = num(raw.input), num(raw.output)
   return {
-    fresh = input + output + cacheWrite,
+    total = input + output,
     input = input,
     output = output,
-    cacheRead = num(raw.cache_read),
-    cacheWrite = cacheWrite,
     messages = num(raw.messages),
   }
 end

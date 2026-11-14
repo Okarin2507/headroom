@@ -37,11 +37,12 @@
     "now": "just now"
   },
   "analytics": {
-    "breakdown": "in {input} · out {output} · cache read {cache_read} · cache write {cache_write} · {messages} responses",
+    "breakdown": "in {input} · out {output} · {messages} responses",
     "collapse": "Hide token usage",
-    "day_tooltip": "{day}: {tokens} tokens",
+    "day_tooltip": "{day}: {tokens}",
     "expand": "Show token usage",
-    "footnote": "Tokens = input + output + cache writes, counted from this computer's logs. Hover for the cache and response counts.",
+    "footnote": "Counted from this computer's logs. Input is what the model read anew (not re-served from cache); output includes thinking.",
+    "in_out": "in {input} · out {output}",
     "models": "By model · last 7 days",
     "month": "Last 30 days",
     "none": "No token usage found in the last 30 days.",
@@ -224,7 +225,7 @@
     "forecast": "Forecast",
     "resets": "Resets",
     "tokens": "Tokens",
-    "tokens_value": "{tokens} this session · {today} today"
+    "tokens_value": "{input} in · {output} out this session"
   },
   "window": {
     "other": "Limit",

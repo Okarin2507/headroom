@@ -15,11 +15,11 @@ import sys, os, json, glob, time, datetime, sqlite3
 
 WEEK = 7 * 86400
 MONTH = 30 * 86400
-KEYS = ("input", "output", "cache_read", "cache_write", "messages")
+KEYS = ("input", "output", "messages")
 
 
 def blank():
-    return {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "messages": 0}
+    return {"input": 0, "output": 0, "messages": 0}
 
 
 def add(bucket, rec):
@@ -66,10 +66,10 @@ def claude_records(dirs, cutoff):
                             ts,
                             model,
                             {
-                                "input": int(usage.get("input_tokens") or 0),
+                                # Input is what the model read anew: prompt tokens not
+                                # re-served from the prompt cache.
+                                "input": int(usage.get("input_tokens") or 0) + int(usage.get("cache_creation_input_tokens") or 0),
                                 "output": int(usage.get("output_tokens") or 0),
-                                "cache_read": int(usage.get("cache_read_input_tokens") or 0),
-                                "cache_write": int(usage.get("cache_creation_input_tokens") or 0),
                                 "messages": 1,
                             },
                             path,
@@ -164,8 +164,6 @@ def agy_records(dirs, cutoff):
                         rec = {
                             "input": max(prompt - cached, 0),
                             "output": out_tokens,
-                            "cache_read": cached,
-                            "cache_write": 0,
                             "messages": 1,
                         }
                         yield float(ts), clean_model(names.get(enum, "Gemini")), rec, path
@@ -216,8 +214,8 @@ def main():
                 break
 
     for p in list(periods.values()) + list(models.values()) + days:
-        p["fresh"] = p["input"] + p["output"] + p["cache_write"]
-    top = sorted(models.items(), key=lambda kv: kv[1]["fresh"] + kv[1]["cache_read"], reverse=True)[:6]
+        p["total"] = p["input"] + p["output"]
+    top = sorted(models.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
     print(
         json.dumps(
             {

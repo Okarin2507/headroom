@@ -185,13 +185,19 @@ local PERIODS = {
   { key = "month", label = "analytics.month" },
 }
 
--- "in 2.3k · out 970k · cache read 129M · cache write 4.3M · 1157 responses"
+-- "in 2.3M · out 970k"
+local function inOut(totals): string
+  return noctalia.tr("analytics.in_out", {
+    input = analytics.compact(totals.input),
+    output = analytics.compact(totals.output),
+  })
+end
+
+-- "in 2.3M · out 970k · 1157 responses", for tooltips.
 local function breakdown(totals): string
   return noctalia.tr("analytics.breakdown", {
     input = analytics.compact(totals.input),
     output = analytics.compact(totals.output),
-    cache_read = analytics.compact(totals.cacheRead),
-    cache_write = analytics.compact(totals.cacheWrite),
     messages = analytics.compact(totals.messages),
   })
 end
@@ -205,7 +211,7 @@ local function periodRow(report, period)
     tooltip = breakdown(totals),
   }, {
     M.caption(noctalia.tr(period.label), nil, { flexGrow = 1, maxLines = 1 }),
-    ui.label({ text = analytics.compact(totals.fresh), fontSize = 12, fontWeight = "semibold", color = "on_surface" }),
+    ui.label({ text = inOut(totals), fontSize = 12, fontWeight = "semibold", color = "on_surface" }),
   })
 end
 
@@ -214,11 +220,11 @@ end
 local function dayChart(days)
   local peak = 0
   for _, day in days do
-    peak = math.max(peak, day.fresh)
+    peak = math.max(peak, day.total)
   end
   local columns = {}
   for i, day in days do
-    local height = if peak > 0 and day.fresh > 0 then math.max(3, math.floor(day.fresh / peak * CHART_HEIGHT + 0.5)) else 2
+    local height = if peak > 0 and day.total > 0 then math.max(3, math.floor(day.total / peak * CHART_HEIGHT + 0.5)) else 2
     local isToday = i == #days
     table.insert(columns, ui.column({
       key = day.date,
@@ -232,8 +238,8 @@ local function dayChart(days)
         width = 18,
         height = height,
         radius = 3,
-        fill = if day.fresh == 0 then "on_surface/0.10" elseif isToday then "primary" else "primary/0.5",
-        tooltip = noctalia.tr("analytics.day_tooltip", { day = day.date, tokens = analytics.compact(day.fresh) }),
+        fill = if day.total == 0 then "on_surface/0.10" elseif isToday then "primary" else "primary/0.5",
+        tooltip = noctalia.tr("analytics.day_tooltip", { day = day.date, tokens = inOut(day) }),
       }),
       M.caption(day.weekday, if isToday then "on_surface" else nil, { fontSize = 10 }),
     }))
@@ -244,19 +250,18 @@ end
 local function modelRows(report)
   local sum = 0
   for _, entry in report.models do
-    sum += entry.fresh
+    sum += entry.total
   end
   local rows = {}
   for i, entry in report.models do
     if i > 4 then
       break
     end
-    local share = if sum > 0 then entry.fresh / sum else 0
+    local share = if sum > 0 then entry.total / sum else 0
     table.insert(rows, ui.column({ key = entry.name, gap = 3, tooltip = breakdown(entry) }, {
       ui.row({ align = "center", gap = 8 }, {
         ui.label({ text = analytics.modelName(entry.name), fontSize = 12, color = "on_surface", flexGrow = 1, maxLines = 1 }),
-        M.caption(`{math.floor(share * 100 + 0.5)}%`),
-        ui.label({ text = analytics.compact(entry.fresh), fontSize = 12, fontWeight = "medium", color = "on_surface" }),
+        ui.label({ text = inOut(entry), fontSize = 12, fontWeight = "medium", color = "on_surface" }),
       }),
       ui.progress({ progress = share, height = 3, radius = 2, fill = "primary/0.7", track = "on_surface/0.08" }),
     }))
@@ -291,7 +296,6 @@ local function analyticsBlock(account, options)
       for _, period in PERIODS do
         table.insert(children, periodRow(report, period))
       end
-      table.insert(children, M.caption(breakdown(report.periods.session), nil, { maxLines = 3 }))
       table.insert(children, dayChart(report.days))
       table.insert(children, M.caption(noctalia.tr("analytics.models"), nil, { fontWeight = "semibold" }))
       table.insert(children, modelRows(report))

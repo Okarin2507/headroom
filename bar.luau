@@ -60,7 +60,7 @@ end
 --   Claude · Weekly   59% used (cached)
 --   Resets            6h 5m · 07:59
 --   Forecast          ≈ 61% by reset
---   Tokens            5.3M this session · 5.5M today
+--   Tokens            2.3M in · 970k out this session
 -- With several accounts, the first key names the account: "Claude · Work · Weekly".
 local function tooltipRows(items, now: number)
   local rows = {}
@@ -85,8 +85,8 @@ local function tooltipRows(items, now: number)
         table.insert(rows, {
           key = noctalia.tr("tooltip.tokens"),
           value = noctalia.tr("tooltip.tokens_value", {
-            tokens = analytics.compact(tokens.periods.session.fresh),
-            today = analytics.compact(tokens.periods.today.fresh),
+            input = analytics.compact(tokens.periods.session.input),
+            output = analytics.compact(tokens.periods.session.output),
           }),
         })
       end

@@ -9,12 +9,12 @@ local model = mods.require("lib/model.luau")
 
 -- What the Python program prints, for a day of Claude Code use.
 local function scriptOutput(host)
-  local function totals(input, output, cacheRead, cacheWrite, messages)
-    return { input = input, output = output, cache_read = cacheRead, cache_write = cacheWrite, messages = messages }
+  local function totals(input, output, messages)
+    return { input = input, output = output, messages = messages }
   end
   local days = {}
   for i, name in { "Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu" } do
-    local day = totals(0, if i == 7 then 4000 else 0, 0, 0, if i == 7 then 3 else 0)
+    local day = totals(0, if i == 7 then 4000 else 0, if i == 7 then 3 else 0)
     day.date = `2026-09-{20 + i}`
     day.weekday = name
     table.insert(days, day)
@@ -25,14 +25,14 @@ local function scriptOutput(host)
     lastActivity = 1789999000,
     sessions = 2,
     periods = {
-      session = totals(2300, 970000, 129000000, 4300000, 1157),
-      today = totals(2500, 1012000, 141000000, 4480000, 1243),
-      week = totals(9000, 3969000, 826000000, 15500000, 4374),
-      month = totals(9000, 3969000, 826000000, 15500000, 4374),
+      session = totals(2300000, 970000, 1157),
+      today = totals(2500000, 1012000, 1243),
+      week = totals(9000000, 3969000, 4374),
+      month = totals(9000000, 3969000, 4374),
     },
     models = {
-      { name = "claude-opus-5-5", input = 5000, output = 2000000, cache_read = 1, cache_write = 6000000, messages = 2455 },
-      { name = "claude-sonnet-5-5", input = 2700, output = 1180000, cache_read = 1, cache_write = 600000, messages = 1344 },
+      { name = "claude-opus-5-5", input = 6000000, output = 2000000, messages = 2455 },
+      { name = "claude-sonnet-5-5", input = 600000, output = 1180000, messages = 1344 },
     },
     days = days,
   })
@@ -87,14 +87,15 @@ t.group("analytics", function()
     t.eq(analytics.parse(nil), nil)
     t.eq(analytics.parse({ nope = true }), nil)
     local report = analytics.parse(host0.globals.noctalia.json.decode(scriptOutput(host0)))
-    t.eq(report.periods.session.input, 2300)
-    t.eq(report.periods.session.fresh, 2300 + 970000 + 4300000, "fresh = input + output + cache writes")
-    t.eq(report.periods.session.cacheRead, 129000000)
+    t.eq(report.periods.session.input, 2300000)
+    t.eq(report.periods.session.output, 970000)
+    t.eq(report.periods.session.total, 3270000, "total = input + output")
+    t.eq(report.periods.session.cacheRead, nil, "cache is not tracked")
     t.eq(report.models[1].name, "claude-opus-5-5")
     t.eq(#report.days, 7)
     t.eq(report.days[7].weekday, "Thu")
     local junk = analytics.parse({ periods = { session = { input = -5, output = "x" } } })
-    t.eq(junk.periods.session.fresh, 0, "negative and non-numeric counts are zero")
+    t.eq(junk.periods.session.total, 0, "negative and non-numeric counts are zero")
   end)
 
   t.test("the session picks the tightest of several session windows", function()
@@ -156,7 +157,10 @@ t.group("analytics", function()
     local texts = env.texts(host.panelTree)
     t.contains(texts, "Token usage")
     t.contains(texts, "This 5-hour session")
-    t.contains(texts, "5.3M") -- 2.3k in + 970k out + 4.3M cache writes
+    t.contains(texts, "in 2.3M · out 970k")
+    for _, text in texts do
+      t.ok(not text:lower():find("cache", 1, true) or text:find("Counted from", 1, true) ~= nil, "no cache figures: " .. text)
+    end
     t.contains(texts, "Opus 5.5")
     t.contains(texts, "Thu")
 
@@ -185,7 +189,7 @@ t.group("analytics", function()
       end
     end
     t.ok(row ~= nil, "a Tokens row")
-    t.eq(row.value, "5.3M this session · 5.5M today")
+    t.eq(row.value, "2.3M in · 970k out this session")
   end)
 end)
 
