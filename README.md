@@ -29,8 +29,11 @@ Sign in to at least one of these. Headroom picks up each one on its own; there i
 - **Antigravity**: the `agy` CLI or an Antigravity app, signed in with Google. Headroom reads the session Antigravity
   keeps in your keyring (through `secret-tool`) or in `~/.gemini/antigravity-cli/antigravity-oauth-token`. Plans
   without Antigravity quota show *No quota on this plan*.
-  Gemini's limit, which Google's quota summary leaves out for some accounts, is read from the model list
-  (`fetchAvailableModels` on the CLI's own host) and shown as one **Gemini · Session** window shared by all Gemini models.
+  The limits come from the same quota summary the CLI's `/usage` shows, asked for the way agy asks (the daily host, a
+  `antigravity/cli/<version>` User-Agent and the project from `loadCodeAssist`): **Gemini** (5-hour and weekly),
+  **Gemini 4 Argon** (weekly) and **Claude & GPT** (5-hour and weekly). Gemini is listed first. It never runs `agy`
+  for this, so it costs no model quota. If Google stops answering with Gemini groups, the 5-hour Gemini limit is read
+  from the model list as a fallback.
 
 Optional tools, all declared in `dependencies`. Each one only powers the feature below, and when it's missing that
 feature is skipped:

@@ -140,7 +140,7 @@ t.group("antigravity", function()
       return nil
     end
     env.serve(host, {
-      ["loadCodeAssist"] = '{"paidTier":{"name":"Google AI Pro"}}',
+      ["loadCodeAssist"] = opts.codeAssist or '{"paidTier":{"name":"Google AI Pro"},"cloudaicompanionProject":"aicode-consumers"}',
       ["retrieveUserQuotaSummary"] = opts.quota or env.fixture("antigravity_quota.json"),
       ["fetchAvailableModels"] = opts.models,
     })
@@ -205,10 +205,47 @@ t.group("antigravity", function()
     t.eq(err, nil)
     t.eq(#snap.windows, 4)
     t.eq(snap.plan, "Google AI Pro")
-    local req = host.requests[1]
-    t.eq(req.method, "POST")
-    t.eq(env.headerOf(req, "User-Agent"), "antigravity")
+    for _, req in host.requests do
+      t.eq(req.method, "POST")
+      t.eq(env.headerOf(req, "User-Agent"), "antigravity/cli/1.5.7 linux/amd64", "agy's own format; a bare 'antigravity' gets no Gemini groups")
+    end
     t.eq(commands(host)[1], KEYRING)
+  end)
+
+  t.test("the quota is asked for on the daily host, naming the project loadCodeAssist gave", function()
+    local host, p, ctx = setup({ keyring = session(FRESH) })
+    fetch(p, ctx)
+    t.ok(host.requests[1].url:find("daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist", 1, true) ~= nil, host.requests[1].url)
+    local quota = host.requests[2]
+    t.ok(quota.url:find("daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary", 1, true) ~= nil, quota.url)
+    t.eq(quota.body, '{"project":"aicode-consumers"}')
+
+    local host2, p2, ctx2 = setup({ keyring = session(FRESH), codeAssist = "{}" })
+    t.eq(select(2, fetch(p2, ctx2)), nil, "no project known: still fetched")
+    t.eq(host2.requests[2].body, "{}")
+
+    local host3, p3, ctx3 = setup({ keyring = session(FRESH), codeAssist = '{"cloudaicompanionProject":"x\\"}"}' })
+    fetch(p3, ctx3)
+    t.eq(host3.requests[2].body, "{}", "a project that is not a plain identifier is never put into the body")
+  end)
+
+  t.test("Gemini's weekly, Gemini 4 Argon's weekly and Claude & GPT's, Gemini first", function()
+    local host, p, ctx = setup({ keyring = session(FRESH), quota = env.fixture("antigravity_quota_full.json") })
+    local snap, err = fetch(p, ctx)
+    t.eq(err, nil)
+    local ids, labels = {}, {}
+    for _, w in snap.windows do
+      table.insert(ids, w.id)
+      labels[w.id] = w.label
+    end
+    t.eq(table.concat(ids, ","), "gemini-5h,gemini-weekly,gemini-argon-wtu-weekly,3p-5h,3p-weekly")
+    t.eq(labels["gemini-5h"], "Gemini · Session")
+    t.eq(labels["gemini-weekly"], "Gemini · Weekly")
+    t.eq(labels["gemini-argon-wtu-weekly"], "Gemini 4 Argon · Weekly")
+    t.near(snap.windows[2].usedPercent, 22, 1e-6)
+    for _, req in host.requests do
+      t.ok(req.url:find("fetchAvailableModels", 1, true) == nil, "no fallback needed")
+    end
   end)
 
   t.test("Gemini's shared limit comes from the model list when the summary leaves it out", function()

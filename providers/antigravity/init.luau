@@ -12,11 +12,18 @@
 -- its own keyring entry, then read it again (lib/renew: at most once per 10
 -- minutes, so a dead session does not spawn agy on every refresh).
 --
--- Endpoints: POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary,
--- :fetchAvailableModels on the daily host the CLI itself uses (each model's
--- quotaInfo: how Gemini's shared limit is reported, which the summary leaves
--- out for some accounts), and :loadCodeAssist for the plan name (at most every
--- 6 hours). Undocumented. It only answers clients that
+-- Endpoints, all on the daily host the CLI itself uses (the production host
+-- reports stale Gemini numbers), all undocumented:
+--   :loadCodeAssist            the plan name and the project to ask about (at
+--                              most every 6 hours)
+--   :retrieveUserQuotaSummary  every limit: Gemini's 5-hour and weekly, the
+--                              Gemini 4 Argon weekly, Claude & GPT's. It only
+--                              includes the Gemini groups for a client that
+--                              identifies as a recent agy, and for a request
+--                              that names the project from loadCodeAssist.
+--   :fetchAvailableModels      each model's 5-hour quotaInfo; only a fallback
+--                              for Gemini when the summary has none
+-- It only answers clients that
 -- identify as Antigravity, so this adapter's User-Agent is "antigravity"
 -- rather than Headroom's own. Plans without Antigravity quota get 403
 -- SUBSCRIPTION_REQUIRED, reported as no_plan rather than as a sign-in problem.
@@ -29,13 +36,16 @@ local renew = require("../../lib/renew.luau")
 
 local E = model.ErrorCode
 
-local CODE_ASSIST_URL = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
+local CODE_ASSIST_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
 local CLIENT_METADATA = '{"metadata":{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}}'
 -- The plan changes rarely; ask for it at most this often.
 local PLAN_TTL = 6 * 3600
-local QUOTA_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
--- The CLI's own host: the production one reports Gemini's quota as untouched.
+local QUOTA_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
 local MODELS_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+-- The service gates its Gemini groups on the client's User-Agent: a bare
+-- "antigravity" gets Claude & GPT only, and so does an old agy version (1.0.0).
+-- This is agy's own format; bump the version if Google starts rejecting it.
+local USER_AGENT = "antigravity/cli/1.5.7 linux/amd64"
 local SESSION_SECONDS = model.SESSION_SECONDS
 local WEEK_SECONDS = model.WEEK_SECONDS
 
@@ -51,7 +61,7 @@ local renewSession = renew.new(600, 30000)
 -- KEYRING_BACKOFF and only the token file is read.
 local KEYRING_BACKOFF = 30 * 60
 local keyringFailedAt = -math.huge
-local planCache: { value: string?, at: number } = { value = nil, at = -math.huge }
+local accountCache: { plan: string?, project: string?, at: number } = { plan = nil, project = nil, at = -math.huge }
 
 type Session = { accessToken: string, expiry: any }
 
@@ -126,12 +136,15 @@ local function renewWithAgy(ctx, done: (boolean) -> ())
   renewSession(ctx, { "env", "AGY_CLI_DISABLE_AUTO_UPDATE=true", agy, "models" }, done)
 end
 
+-- "Gemini Models" -> "Gemini", "Claude and GPT models" -> "Claude & GPT"; a
+-- model's own group ("Gemini 4 Argon") keeps its name.
 local function groupLabel(name: any): string
   name = if type(name) == "string" then name else ""
-  if name:find("Gemini", 1, true) then
-    return "Gemini"
-  elseif name:find("Claude", 1, true) or name:find("GPT", 1, true) then
+  if name:find("Claude", 1, true) or name:find("GPT", 1, true) then
     return "Claude & GPT"
+  elseif name:find("Gemini", 1, true) then
+    local base = name:gsub("%s+[Mm]odels$", "")
+    return if base == "Gemini" or base == "" then "Gemini" else base
   end
   return name
 end
@@ -280,17 +293,32 @@ local function planFrom(data): string?
   return nil
 end
 
--- Best effort: a failure leaves the plan unknown and never fails the fetch.
-local function withPlan(ctx, headers, done: (string?) -> ())
-  if ctx.now() - planCache.at < PLAN_TTL then
-    done(planCache.value)
+-- The project loadCodeAssist assigns ("aicode-consumers" for consumer
+-- accounts), which the quota request must name for the Gemini groups to appear.
+-- Checked to be a plain identifier, since it goes into a JSON body.
+local function projectFrom(data): string?
+  local project = data.cloudaicompanionProject
+  if type(project) == "table" then
+    project = project.id
+  end
+  if type(project) == "string" and project:match("^[%w_.%-]+$") then
+    return project
+  end
+  return nil
+end
+
+-- Plan and project, best effort: a failure leaves both unknown (the quota is
+-- then asked for without a project) and never fails the fetch.
+local function withAccount(ctx, headers, done: (string?, string?) -> ())
+  if ctx.now() - accountCache.at < PLAN_TTL then
+    done(accountCache.plan, accountCache.project)
     return
   end
   ctx.postJson(CODE_ASSIST_URL, headers, CLIENT_METADATA, function(data, err)
     if err == nil then
-      planCache = { value = planFrom(data), at = ctx.now() }
+      accountCache = { plan = planFrom(data), project = projectFrom(data), at = ctx.now() }
     end
-    done(planCache.value)
+    done(accountCache.plan, accountCache.project)
   end)
 end
 
@@ -306,25 +334,26 @@ end
 local function query(ctx, session: Session, done)
   local headers = {
     ["Authorization"] = `Bearer {session.accessToken}`,
-    ["User-Agent"] = "antigravity", -- required by the endpoint; see header comment
+    ["User-Agent"] = USER_AGENT, -- required by the endpoint; see USER_AGENT
   }
-  ctx.postJson(QUOTA_URL, headers, "{}", function(data, err)
-    if err then
-      done(nil, err)
-      return
-    end
-    local snapshot, parseErr = parse(data, ctx)
-    withGemini(ctx, headers, snapshot, function(complete)
-      if complete == nil then
-        done(nil, parseErr)
+  withAccount(ctx, headers, function(plan, project)
+    local body = if project then `\{"project":"{project}"}` else "{}"
+    ctx.postJson(QUOTA_URL, headers, body, function(data, err)
+      if err then
+        done(nil, err)
         return
       end
-      withPlan(ctx, headers, function(plan)
+      local snapshot, parseErr = parse(data, ctx)
+      withGemini(ctx, headers, snapshot, function(complete)
+        if complete == nil then
+          done(nil, parseErr)
+          return
+        end
         complete.plan = plan
         done(complete, nil)
       end)
-    end)
-  end, classify)
+    end, classify)
+  end)
 end
 
 return provider.define({
