@@ -37,15 +37,19 @@
     "now": "just now"
   },
   "analytics": {
-    "breakdown": "in {input} · out {output} · {messages} responses",
+    "breakdown": "In {input} · Out {output} · {messages} responses",
     "collapse": "Hide token usage",
+    "daily": "Per day · In + Out",
     "day_tooltip": "{day}: {tokens}",
     "expand": "Show token usage",
-    "footnote": "Counted from this computer's logs. Input is what the model read anew (not re-served from cache); output includes thinking.",
-    "in_out": "in {input} · out {output}",
+    "footnote": "Counted from this computer's logs. In is what the model read anew (not re-served from cache); Out includes thinking.",
+    "in": "In",
+    "in_out": "In {input} · Out {output}",
     "models": "By model · last 7 days",
     "month": "Last 30 days",
     "none": "No token usage found in the last 30 days.",
+    "out": "Out",
+    "period": "Period",
     "session": "This 5-hour session",
     "title": "Token usage",
     "today": "Today",
@@ -225,7 +229,7 @@
     "forecast": "Forecast",
     "resets": "Resets",
     "tokens": "Tokens",
-    "tokens_value": "{input} in · {output} out this session"
+    "tokens_value": "In {input} · Out {output} this session"
   },
   "window": {
     "other": "Limit",

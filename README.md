@@ -95,12 +95,12 @@ conversation databases (`~/.gemini/antigravity*/conversations/*.db`). Nothing is
 
 - **Periods.** This 5-hour session (counted from the window's own start, so it lines up with the session meter),
   today, the last 7 days and the last 30 days.
-- **Bars.** One per day for the last week, today in full color. Hover a bar for the day's input and output.
+- **Bars.** One per day for the last week (each with its In + Out total), today in full color. Hover a bar for the day's In and Out.
 - **By model.** The busiest models of the last 7 days with a share bar.
-- **Counts.** Only input and output, as `in 2.3M · out 970k`. Input is what the model read anew (for Claude, the prompt
-  tokens not re-served from the prompt cache; for Antigravity, the prompt minus what was cached), and output includes
+- **Counts.** Only **In** and **Out**, in two aligned columns. In is what the model read anew (for Claude, the prompt
+  tokens not re-served from the prompt cache; for Antigravity, the prompt minus what was cached), and Out includes
   thinking tokens. Cache reads aren't shown. Hover a row for the number of responses.
-- **Bar tooltip.** Adds a *Tokens* row: input and output this session.
+- **Bar tooltip.** Adds a *Tokens* row: `In 2.3M · Out 970k this session`.
 
 Turn it off with the `analytics` setting. Figures are read from local logs, so they cover this computer only.
 

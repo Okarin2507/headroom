@@ -185,7 +185,7 @@ local PERIODS = {
   { key = "month", label = "analytics.month" },
 }
 
--- "in 2.3M · out 970k"
+-- "In 2.3M · Out 970k", for tooltips.
 local function inOut(totals): string
   return noctalia.tr("analytics.in_out", {
     input = analytics.compact(totals.input),
@@ -193,7 +193,7 @@ local function inOut(totals): string
   })
 end
 
--- "in 2.3M · out 970k · 1157 responses", for tooltips.
+-- "In 2.3M · Out 970k · 1157 responses", for tooltips.
 local function breakdown(totals): string
   return noctalia.tr("analytics.breakdown", {
     input = analytics.compact(totals.input),
@@ -202,21 +202,44 @@ local function breakdown(totals): string
   })
 end
 
-local function periodRow(report, period)
-  local totals = report.periods[period.key]
-  return ui.row({
-    key = period.key,
-    align = "center",
-    gap = 8,
-    tooltip = breakdown(totals),
-  }, {
-    M.caption(noctalia.tr(period.label), nil, { flexGrow = 1, maxLines = 1 }),
-    ui.label({ text = inOut(totals), fontSize = 12, fontWeight = "semibold", color = "on_surface" }),
+-- In and Out sit in two right-aligned columns, so every figure lines up with
+-- the heading above it.
+local COLUMN = 64
+
+local function numberCell(value: number, props)
+  local cell = { text = analytics.compact(value), fontSize = 12, color = "on_surface", width = COLUMN, textAlign = "right", maxLines = 1 }
+  for k, v in props or {} do
+    cell[k] = v
+  end
+  return ui.label(cell)
+end
+
+-- A section title with the In / Out column headings on its right.
+local function tableHeader(title: string)
+  return ui.row({ align = "center", gap = 8 }, {
+    M.caption(title, "on_surface", { flexGrow = 1, fontWeight = "semibold", maxLines = 1 }),
+    M.caption(noctalia.tr("analytics.in"), nil, { width = COLUMN, textAlign = "right", fontWeight = "semibold" }),
+    M.caption(noctalia.tr("analytics.out"), nil, { width = COLUMN, textAlign = "right", fontWeight = "semibold" }),
   })
 end
 
--- Seven bars, oldest first, today last and in full color. Each bar's tooltip
--- gives the day and its tokens.
+local function periodRows(report)
+  local rows = { tableHeader(noctalia.tr("analytics.period")), ui.separator({ color = "outline/0.2" }) }
+  for _, period in PERIODS do
+    local totals = report.periods[period.key]
+    local strong = period.key == "session"
+    local weight = if strong then "semibold" else "regular"
+    table.insert(rows, ui.row({ key = period.key, align = "center", gap = 8, tooltip = breakdown(totals) }, {
+      ui.label({ text = noctalia.tr(period.label), fontSize = 12, fontWeight = weight, color = "on_surface", flexGrow = 1, maxLines = 1 }),
+      numberCell(totals.input, { fontWeight = weight }),
+      numberCell(totals.output, { fontWeight = weight }),
+    }))
+  end
+  return ui.column({ gap = 6 }, rows)
+end
+
+-- Seven bars, oldest first, today last and in full color, each with its day's
+-- total (In + Out) above it. Each bar's tooltip gives the day's In and Out.
 local function dayChart(days)
   local peak = 0
   for _, day in days do
@@ -232,8 +255,9 @@ local function dayChart(days)
       align = "center",
       justify = "end",
       gap = 3,
-      height = CHART_HEIGHT + 16,
+      height = CHART_HEIGHT + 30,
     }, {
+      M.caption(if day.total > 0 then analytics.compact(day.total) else " ", if isToday then "on_surface" else nil, { fontSize = 9 }),
       ui.box({
         width = 18,
         height = height,
@@ -241,10 +265,13 @@ local function dayChart(days)
         fill = if day.total == 0 then "on_surface/0.10" elseif isToday then "primary" else "primary/0.5",
         tooltip = noctalia.tr("analytics.day_tooltip", { day = day.date, tokens = inOut(day) }),
       }),
-      M.caption(day.weekday, if isToday then "on_surface" else nil, { fontSize = 10 }),
+      M.caption(day.weekday, if isToday then "on_surface" else nil, { fontSize = 10, fontWeight = if isToday then "semibold" else "regular" }),
     }))
   end
-  return ui.row({ gap = 4, align = "end" }, columns)
+  return ui.column({ gap = 6 }, {
+    M.caption(noctalia.tr("analytics.daily"), "on_surface", { fontWeight = "semibold" }),
+    ui.row({ gap = 4, align = "end" }, columns),
+  })
 end
 
 local function modelRows(report)
@@ -252,16 +279,17 @@ local function modelRows(report)
   for _, entry in report.models do
     sum += entry.total
   end
-  local rows = {}
+  local rows = { tableHeader(noctalia.tr("analytics.models")), ui.separator({ color = "outline/0.2" }) }
   for i, entry in report.models do
     if i > 4 then
       break
     end
     local share = if sum > 0 then entry.total / sum else 0
-    table.insert(rows, ui.column({ key = entry.name, gap = 3, tooltip = breakdown(entry) }, {
+    table.insert(rows, ui.column({ key = entry.name, gap = 4, tooltip = breakdown(entry) }, {
       ui.row({ align = "center", gap = 8 }, {
         ui.label({ text = analytics.modelName(entry.name), fontSize = 12, color = "on_surface", flexGrow = 1, maxLines = 1 }),
-        ui.label({ text = inOut(entry), fontSize = 12, fontWeight = "medium", color = "on_surface" }),
+        numberCell(entry.input),
+        numberCell(entry.output),
       }),
       ui.progress({ progress = share, height = 3, radius = 2, fill = "primary/0.7", track = "on_surface/0.08" }),
     }))
@@ -293,16 +321,13 @@ local function analyticsBlock(account, options)
     if report.periods.month.messages == 0 then
       table.insert(children, M.caption(noctalia.tr("analytics.none"), nil, { maxLines = 2 }))
     else
-      for _, period in PERIODS do
-        table.insert(children, periodRow(report, period))
-      end
+      table.insert(children, periodRows(report))
       table.insert(children, dayChart(report.days))
-      table.insert(children, M.caption(noctalia.tr("analytics.models"), nil, { fontWeight = "semibold" }))
       table.insert(children, modelRows(report))
       table.insert(children, M.caption(noctalia.tr("analytics.footnote"), "on_surface_variant/0.8", { fontSize = 10, maxLines = 3 }))
     end
   end
-  return ui.column({ key = `analytics-{account.key}`, gap = 8 }, children)
+  return ui.column({ key = `analytics-{account.key}`, gap = 14 }, children)
 end
 
 -- Banner, meters and notes for one account.

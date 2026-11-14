@@ -157,7 +157,10 @@ t.group("analytics", function()
     local texts = env.texts(host.panelTree)
     t.contains(texts, "Token usage")
     t.contains(texts, "This 5-hour session")
-    t.contains(texts, "in 2.3M · out 970k")
+    t.contains(texts, "2.3M") -- In
+    t.contains(texts, "970k") -- Out
+    t.contains(texts, "In")
+    t.contains(texts, "Out")
     for _, text in texts do
       t.ok(not text:lower():find("cache", 1, true) or text:find("Counted from", 1, true) ~= nil, "no cache figures: " .. text)
     end
@@ -189,7 +192,7 @@ t.group("analytics", function()
       end
     end
     t.ok(row ~= nil, "a Tokens row")
-    t.eq(row.value, "2.3M in · 970k out this session")
+    t.eq(row.value, "In 2.3M · Out 970k this session")
   end)
 end)
 

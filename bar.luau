@@ -60,7 +60,7 @@ end
 --   Claude · Weekly   59% used (cached)
 --   Resets            6h 5m · 07:59
 --   Forecast          ≈ 61% by reset
---   Tokens            2.3M in · 970k out this session
+--   Tokens            In 2.3M · Out 970k this session
 -- With several accounts, the first key names the account: "Claude · Work · Weekly".
 local function tooltipRows(items, now: number)
   local rows = {}
