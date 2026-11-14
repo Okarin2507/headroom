@@ -11,16 +11,16 @@
 
 id = "ayagmar/headroom"
 name = "Headroom"
-version = "0.2.1"
+version = "0.3.0"
 plugin_api = 32
 author = "ayagmar"
 license = "MIT"
 icon = "gauge"
-description = "How much of your Claude, Codex and Antigravity plan limits is left, per account, with reset times and forecasts."
+description = "How much of your Claude and Antigravity plan limits is left, per account, with reset times and forecasts."
 tags = ["bar", "panel", "service", "ai", "indicator", "productivity"]
 # All optional: each powers one feature listed in the README's Requirements,
 # and that feature is skipped when the tool is missing.
-dependencies = ["xdg-open", "secret-tool", "claude", "codex", "agy", "env", "rm"]
+dependencies = ["xdg-open", "secret-tool", "claude", "agy", "env", "rm", "python3"]
 
 # ── Settings ────────────────────────────────────────────────────────────────
 # One page, read top to bottom in groups whose labels carry the group name
@@ -36,18 +36,6 @@ dependencies = ["xdg-open", "secret-tool", "claude", "codex", "agy", "env", "rm"
 key = "provider_claude"
 type = "select"
 label_key = "settings.provider_claude.label"
-description_key = "settings.provider.description"
-default = "bar"
-options = [
-  { value = "bar", label_key = "settings.provider.option.bar" },
-  { value = "panel", label_key = "settings.provider.option.panel" },
-  { value = "off", label_key = "settings.provider.option.off" },
-]
-
-[[setting]]
-key = "provider_codex"
-type = "select"
-label_key = "settings.provider_codex.label"
 description_key = "settings.provider.description"
 default = "bar"
 options = [
@@ -84,10 +72,10 @@ key = "window"
 type = "select"
 label_key = "settings.window.label"
 description_key = "settings.window.description"
-default = "tightest"
+default = "session"
 options = [
-  { value = "tightest", label_key = "settings.window.option.tightest" },
   { value = "session", label_key = "settings.window.option.session" },
+  { value = "tightest", label_key = "settings.window.option.tightest" },
   { value = "weekly", label_key = "settings.window.option.weekly" },
 ]
 
@@ -155,6 +143,13 @@ description_key = "settings.notify.description"
 default = true
 
 # Data ·
+
+[[setting]]
+key = "analytics"
+type = "bool"
+label_key = "settings.analytics.label"
+description_key = "settings.analytics.description"
+default = true
 
 [[setting]]
 key = "refresh_minutes"

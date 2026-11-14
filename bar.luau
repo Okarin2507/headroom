@@ -12,6 +12,7 @@ local theme = require("./lib/theme.luau")
 local view = require("./lib/view.luau")
 local time = require("./lib/time.luau")
 local cards = require("./ui/cards.luau")
+local analytics = require("./lib/analytics.luau")
 
 local ICON_SIZE = 15
 
@@ -59,6 +60,7 @@ end
 --   Claude · Weekly   59% used (cached)
 --   Resets            6h 5m · 07:59
 --   Forecast          ≈ 61% by reset
+--   Tokens            5.3M this session · 5.5M today
 -- With several accounts, the first key names the account: "Claude · Work · Weekly".
 local function tooltipRows(items, now: number)
   local rows = {}
@@ -78,6 +80,16 @@ local function tooltipRows(items, now: number)
       if forecast and window.usedPercent < 100 then
         table.insert(rows, { key = noctalia.tr("tooltip.forecast"), value = forecast })
       end
+      local tokens = account.analytics
+      if tokens and tokens.periods.session.messages > 0 then
+        table.insert(rows, {
+          key = noctalia.tr("tooltip.tokens"),
+          value = noctalia.tr("tooltip.tokens_value", {
+            tokens = analytics.compact(tokens.periods.session.fresh),
+            today = analytics.compact(tokens.periods.today.fresh),
+          }),
+        })
+      end
     else
       local value = if account.status == "error" and account.error
         then noctalia.tr(`error.{account.error.code}.title`)
@@ -95,7 +107,7 @@ local function render()
   local shown = function(id: string): boolean
     return state.providerMode(id) == "bar"
   end
-  local items = view.barItems(report, shown, state.config("window", "tightest"), maxItems, now, state.barShowsAllAccounts())
+  local items = view.barItems(report, shown, state.config("window", "session"), maxItems, now, state.barShowsAllAccounts())
 
   if #items == 0 then
     barWidget.render(ui.row({ gap = 4, align = "center" }, {

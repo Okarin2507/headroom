@@ -73,6 +73,9 @@ export type Provider = {
   signInHint: (ctx: Context) -> string,
   -- Optional: several accounts, one per config folder.
   accounts: Accounts?,
+  -- Optional: where the CLI keeps its local token counts, for lib/analytics.luau.
+  -- `source` names the reader in its script ("claude" | "antigravity").
+  analytics: { source: string, folders: (ctx: Context) -> { string } }?,
   -- Optional: the pure vendor-JSON -> Snapshot step, exposed for fixture tests.
   parse: ((...any) -> (model.Snapshot?, model.ProviderError?))?,
 }

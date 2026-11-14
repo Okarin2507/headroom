@@ -235,6 +235,19 @@ return provider.define({
     glyph = "rocket",
   },
 
+  -- Token analytics come from the conversation databases the CLI and the app
+  -- keep (<folder>/*.db); see lib/analytics.luau.
+  analytics = {
+    source = "antigravity",
+    folders = function(_ctx)
+      return {
+        "~/.gemini/antigravity-cli/conversations",
+        "~/.gemini/antigravity/conversations",
+        "~/.gemini/antigravity-ide/conversations",
+      }
+    end,
+  },
+
   isConfigured = function(ctx)
     return ctx.fileExists(ctx.expandPath(CLI_SETTINGS))
       or ctx.fileExists(ctx.expandPath(TOKEN_FILE))

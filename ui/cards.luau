@@ -8,6 +8,7 @@
 local theme = require("../lib/theme.luau")
 local view = require("../lib/view.luau")
 local time = require("../lib/time.luau")
+local analytics = require("../lib/analytics.luau")
 
 local M = {}
 
@@ -26,6 +27,7 @@ local SIGN_IN_ERRORS = { not_configured = true, expired = true, auth = true }
 --   renaming: string?       key of the account whose name is being edited
 --   onRenameOpen(key), onRenameCancel(), onRenameChange(text), onRenameSubmit(key)
 --   confirmingRemove: string?, copied: string?   account keys
+--   analyticsOpen: boolean?, onToggleAnalytics()   the token section; open unless false
 export type Options = { [string]: any }
 
 function M.logo(provider, size: number, opacity: number?)
@@ -173,6 +175,132 @@ local function accountStatus(account): string?
   return plan
 end
 
+-- ── Token analytics ────────────────────────────────────────────────────────
+
+local CHART_HEIGHT = 44
+local PERIODS = {
+  { key = "session", label = "analytics.session" },
+  { key = "today", label = "analytics.today" },
+  { key = "week", label = "analytics.week" },
+  { key = "month", label = "analytics.month" },
+}
+
+-- "in 2.3k · out 970k · cache read 129M · cache write 4.3M · 1157 responses"
+local function breakdown(totals): string
+  return noctalia.tr("analytics.breakdown", {
+    input = analytics.compact(totals.input),
+    output = analytics.compact(totals.output),
+    cache_read = analytics.compact(totals.cacheRead),
+    cache_write = analytics.compact(totals.cacheWrite),
+    messages = analytics.compact(totals.messages),
+  })
+end
+
+local function periodRow(report, period)
+  local totals = report.periods[period.key]
+  return ui.row({
+    key = period.key,
+    align = "center",
+    gap = 8,
+    tooltip = breakdown(totals),
+  }, {
+    M.caption(noctalia.tr(period.label), nil, { flexGrow = 1, maxLines = 1 }),
+    ui.label({ text = analytics.compact(totals.fresh), fontSize = 12, fontWeight = "semibold", color = "on_surface" }),
+  })
+end
+
+-- Seven bars, oldest first, today last and in full color. Each bar's tooltip
+-- gives the day and its tokens.
+local function dayChart(days)
+  local peak = 0
+  for _, day in days do
+    peak = math.max(peak, day.fresh)
+  end
+  local columns = {}
+  for i, day in days do
+    local height = if peak > 0 and day.fresh > 0 then math.max(3, math.floor(day.fresh / peak * CHART_HEIGHT + 0.5)) else 2
+    local isToday = i == #days
+    table.insert(columns, ui.column({
+      key = day.date,
+      flexGrow = 1,
+      align = "center",
+      justify = "end",
+      gap = 3,
+      height = CHART_HEIGHT + 16,
+    }, {
+      ui.box({
+        width = 18,
+        height = height,
+        radius = 3,
+        fill = if day.fresh == 0 then "on_surface/0.10" elseif isToday then "primary" else "primary/0.5",
+        tooltip = noctalia.tr("analytics.day_tooltip", { day = day.date, tokens = analytics.compact(day.fresh) }),
+      }),
+      M.caption(day.weekday, if isToday then "on_surface" else nil, { fontSize = 10 }),
+    }))
+  end
+  return ui.row({ gap = 4, align = "end" }, columns)
+end
+
+local function modelRows(report)
+  local sum = 0
+  for _, entry in report.models do
+    sum += entry.fresh
+  end
+  local rows = {}
+  for i, entry in report.models do
+    if i > 4 then
+      break
+    end
+    local share = if sum > 0 then entry.fresh / sum else 0
+    table.insert(rows, ui.column({ key = entry.name, gap = 3, tooltip = breakdown(entry) }, {
+      ui.row({ align = "center", gap = 8 }, {
+        ui.label({ text = analytics.modelName(entry.name), fontSize = 12, color = "on_surface", flexGrow = 1, maxLines = 1 }),
+        M.caption(`{math.floor(share * 100 + 0.5)}%`),
+        ui.label({ text = analytics.compact(entry.fresh), fontSize = 12, fontWeight = "medium", color = "on_surface" }),
+      }),
+      ui.progress({ progress = share, height = 3, radius = 2, fill = "primary/0.7", track = "on_surface/0.08" }),
+    }))
+  end
+  return ui.column({ gap = 6 }, rows)
+end
+
+-- The account's token counts: this session, today, 7 and 30 days, the last
+-- seven days as bars and the models behind them. Collapsible, since the usage
+-- meters above are what most glances are for.
+local function analyticsBlock(account, options)
+  local report = account.analytics
+  local open = options.analyticsOpen ~= false
+  local children = {
+    ui.row({ align = "center", gap = 6 }, {
+      ui.label({ text = noctalia.tr("analytics.title"), fontSize = 12, fontWeight = "semibold", color = "on_surface", flexGrow = 1 }),
+      ui.button({
+        glyph = if open then "chevron-up" else "chevron-down",
+        variant = "ghost",
+        controlSize = "sm",
+        tooltip = noctalia.tr(if open then "analytics.collapse" else "analytics.expand"),
+        onClick = function()
+          options.onToggleAnalytics()
+        end,
+      }),
+    }),
+  }
+  if open then
+    if report.periods.month.messages == 0 then
+      table.insert(children, M.caption(noctalia.tr("analytics.none"), nil, { maxLines = 2 }))
+    else
+      for _, period in PERIODS do
+        table.insert(children, periodRow(report, period))
+      end
+      table.insert(children, M.caption(breakdown(report.periods.session), nil, { maxLines = 3 }))
+      table.insert(children, dayChart(report.days))
+      table.insert(children, M.caption(noctalia.tr("analytics.models"), nil, { fontWeight = "semibold" }))
+      table.insert(children, modelRows(report))
+      table.insert(children, M.caption(noctalia.tr("analytics.footnote"), "on_surface_variant/0.8", { fontSize = 10, maxLines = 3 }))
+    end
+  end
+  return ui.column({ key = `analytics-{account.key}`, gap = 8 }, children)
+end
+
 -- Banner, meters and notes for one account.
 local function accountBody(account, now: number, options): { any }
   local body = {}
@@ -194,6 +322,10 @@ local function accountBody(account, now: number, options): { any }
     end
   elseif account.status == "loading" then
     table.insert(body, M.caption(noctalia.tr("status.fetching")))
+  end
+  if account.analytics then
+    table.insert(body, ui.separator({ color = "outline/0.25" }))
+    table.insert(body, analyticsBlock(account, options))
   end
   return body
 end

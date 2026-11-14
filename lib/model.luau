@@ -104,10 +104,16 @@ end
 -- preference: "tightest" | "session" | "weekly".
 function M.pick(windows: { Window }, preference: string?): Window?
   if preference == "session" or preference == "weekly" then
+    -- A provider can have several windows of one kind (Antigravity: one per
+    -- model group): show the tightest of them.
+    local ofKind = {}
     for _, w in windows do
       if w.kind == preference then
-        return w
+        table.insert(ofKind, w)
       end
+    end
+    if #ofKind > 0 then
+      return M.tightest(ofKind)
     end
   end
   return M.tightest(windows)

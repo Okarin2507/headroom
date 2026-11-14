@@ -6,7 +6,7 @@
 local M = {}
 
 M.PANEL_ID = "ayagmar/headroom:panel"
-M.VERSION = "0.2.1"
+M.VERSION = "0.3.0"
 
 -- Published by the service:
 --   {
@@ -25,6 +25,7 @@ M.VERSION = "0.2.1"
 --     launch: string?,             shell command starting the CLI as this account
 --     status: "loading" | "ok" | "error" | "absent",   absent = not signed in
 --     snapshot: Snapshot?,         last good data, kept through errors
+--     analytics: Report?,          local token counts (lib/analytics.luau); nil when off or not collected
 --     error: ProviderError?,       current failure, with `hint` filled in
 --     stale: boolean,              snapshot is from the disk cache or predates an error
 --     busy: boolean,               a fetch is in flight

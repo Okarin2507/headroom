@@ -30,7 +30,7 @@ t.group("service", function()
     t.eq(claude.status, "ok")
     t.eq(#claude.snapshot.windows, 3)
     t.ok(host.stateValues.report.providers[1].hint:find("claude", 1, true) ~= nil, "sign-in hint published")
-    t.eq(account(host, "codex").status, "absent")
+    t.eq(account(host, "antigravity").status, "absent")
     t.eq(#host.requests, 1, "only signed-in providers are fetched")
     host.clock += 3600
     svc.call("update")
@@ -149,23 +149,23 @@ t.group("service", function()
 
   t.test("providers set to off are neither fetched nor shown", function()
     local host = signedInClaude()
-    env.codexAuth(host)
-    host.config.provider_codex = "off"
+    env.antigravityAuth(host)
+    host.config.provider_antigravity = "off"
     env.start(host, "service.luau")
-    t.eq(account(host, "codex"), nil)
+    t.eq(account(host, "antigravity"), nil)
     t.eq(#host.requests, 1)
   end)
 
   t.test("a crashing adapter is contained", function()
     local host = signedInClaude()
-    env.codexAuth(host)
+    env.antigravityAuth(host)
     env.serve(host, {
       ["api.anthropic.com"] = env.fixture("claude_usage.json"),
-      ["chatgpt.com"] = '{"rate_limit":{"primary_window":"boom"}}',
+      ["retrieveUserQuotaSummary"] = '{"groups":[5]}',
     })
     env.start(host, "service.luau")
     t.eq(account(host, "claude").status, "ok")
-    t.eq(account(host, "codex").error.code, "parse")
+    t.eq(account(host, "antigravity").error.code, "parse")
   end)
 end)
 

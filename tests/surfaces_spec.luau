@@ -2,15 +2,29 @@
 local t = require("./support/t")
 local env = require("./support/env")
 
--- Claude and Codex signed in, the service running.
+-- Antigravity's quota summary: Gemini's session is 51% used, its weekly 20%.
+local function antigravityBody(host)
+  return host.globals.noctalia.json.encode({
+    groups = { {
+      displayName = "Gemini Models",
+      buckets = {
+        { bucketId = "gemini-5h", window = "5h", resetTime = "2026-10-03T06:19:59Z", remainingFraction = 0.49 },
+        { bucketId = "gemini-weekly", window = "weekly", resetTime = "2026-10-10T06:19:59Z", remainingFraction = 0.8 },
+      },
+    } },
+  })
+end
+
+-- Claude and Antigravity signed in, the service running.
 local function running(opts)
   opts = opts or {}
   local host = env.host()
   env.claudeCreds(host)
-  env.codexAuth(host)
+  env.antigravityAuth(host)
   env.serve(host, {
     ["api.anthropic.com"] = env.claudeBody(host, opts.claudeSession),
-    ["chatgpt.com"] = opts.codexResponse or env.fixture("codex_usage.json"),
+    ["loadCodeAssist"] = '{"paidTier":{"name":"Google AI Pro"}}',
+    ["retrieveUserQuotaSummary"] = opts.antigravityResponse or antigravityBody(host),
   })
   for k, v in opts.config or {} do
     host.config[k] = v
@@ -31,10 +45,10 @@ end
 
 t.group("bar", function()
   t.test("logo, ring and value per signed-in provider", function()
-    local host = running()
+    local host = running({ config = { window = "tightest" } })
     env.start(host, "bar.luau")
     local texts = env.texts(host.barTree)
-    -- Claude's tightest window is weekly (47%), Codex's is the session (51%).
+    -- Claude's tightest window is weekly (47%), Antigravity's is the session (51%).
     t.contains(texts, "47%")
     t.contains(texts, "51%")
     local images = env.ofType(host.barTree, "image")
@@ -50,8 +64,24 @@ t.group("bar", function()
     t.eq(#env.ofType(host.barTree, "image"), 2, "logos only, no rings")
   end)
 
-  t.test("tooltip: one short row per fact", function()
+  t.test("the bar shows the 5-hour session by default", function()
     local host = running()
+    env.start(host, "bar.luau")
+    local texts = env.texts(host.barTree)
+    t.contains(texts, "38%") -- Claude's session; its weekly window is at 47%
+    t.contains(texts, "51%") -- Antigravity's Gemini session
+    t.eq(host.tooltip[1].key, "Claude · Session")
+  end)
+
+  t.test("weekly can still be chosen", function()
+    local host = running({ config = { window = "weekly" } })
+    env.start(host, "bar.luau")
+    t.contains(env.texts(host.barTree), "47%")
+    t.eq(host.tooltip[1].key, "Claude · Weekly")
+  end)
+
+  t.test("tooltip: one short row per fact", function()
+    local host = running({ config = { window = "tightest" } })
     host.clock = 1791100799 - 2 * 86400 -- Claude weekly 5/7 elapsed
     env.start(host, "bar.luau")
     local rows = host.tooltip
@@ -74,7 +104,7 @@ t.group("bar", function()
   end)
 
   t.test("remaining mode inverts numbers and rings, not colors", function()
-    local host = running({ claudeSession = 95, config = { provider_codex = "panel", window = "session", display = "remaining" } })
+    local host = running({ claudeSession = 95, config = { provider_antigravity = "panel", window = "session", display = "remaining" } })
     env.start(host, "bar.luau")
     t.eq(firstLabel(host.barTree).text, "5%")
     t.eq(firstLabel(host.barTree).color, "error", "severity follows usage")
@@ -83,7 +113,7 @@ t.group("bar", function()
   end)
 
   t.test("forecast raises the color before the threshold", function()
-    local host = running({ claudeSession = 60, config = { provider_codex = "panel", window = "session" } })
+    local host = running({ claudeSession = 60, config = { provider_antigravity = "panel", window = "session" } })
     host.clock = 1791058799 - 3 * 3600 -- 2h in, 60% used: locked out for 1h40m
     env.start(host, "bar.luau")
     t.eq(firstLabel(host.barTree).color, "#f2b84b")
@@ -91,7 +121,7 @@ t.group("bar", function()
   end)
 
   t.test("a maxed-out window shows when it comes back", function()
-    local host = running({ claudeSession = 100, config = { provider_codex = "panel", window = "session" } })
+    local host = running({ claudeSession = 100, config = { provider_antigravity = "panel", window = "session" } })
     host.clock = 1791058799 - 4500
     env.start(host, "bar.luau")
     t.eq(firstLabel(host.barTree).text, "1h 15m")
@@ -106,9 +136,13 @@ t.group("bar", function()
   end)
 
   t.test("follows the report as it changes", function()
-    local host, svc = running({ config = { provider_codex = "panel", window = "session" } })
+    local host, svc = running({ config = { provider_antigravity = "panel", window = "session" } })
     env.start(host, "bar.luau")
-    env.serve(host, { ["api.anthropic.com"] = env.claudeBody(host, 77), ["chatgpt.com"] = env.fixture("codex_usage.json") })
+    env.serve(host, {
+      ["api.anthropic.com"] = env.claudeBody(host, 77),
+      ["loadCodeAssist"] = '{"paidTier":{"name":"Google AI Pro"}}',
+      ["retrieveUserQuotaSummary"] = antigravityBody(host),
+    })
     svc.call("onIpc", "refresh")
     t.contains(env.texts(host.barTree), "77%")
   end)
@@ -125,7 +159,7 @@ t.group("panel", function()
   t.test("a card per provider with every window", function()
     local host = running()
     local _, texts = openPanel(host)
-    for _, text in { "Claude", "Team 5x", "Codex", "Plus", "Weekly · Fable", "38%" } do
+    for _, text in { "Claude", "Team 5x", "Antigravity", "Google AI Pro", "Weekly · Fable", "38%" } do
       t.contains(texts, text)
     end
     t.ok(#env.ofType(host.panelTree, "progress") >= 5, "a meter per window")
@@ -158,10 +192,10 @@ t.group("panel", function()
   end)
 
   t.test("error banner explains how to recover", function()
-    local host = running({ codexResponse = { ok = true, status = 401, body = "" } })
+    local host = running({ antigravityResponse = { ok = true, status = 401, body = "" } })
     local _, texts = openPanel(host)
     t.contains(texts, "Sign-in rejected")
-    t.contains(texts, "Run `codex login` and sign in with ChatGPT.")
+    t.contains(texts, "Run `agy` once and sign in with Google.")
   end)
 
   t.test("disconnected providers and the empty state", function()
@@ -169,7 +203,7 @@ t.group("panel", function()
     env.start(host, "service.luau")
     local _, texts = openPanel(host)
     t.contains(texts, "No signed-in providers")
-    t.contains(texts, "Codex · not connected")
+    t.contains(texts, "Antigravity · not connected")
   end)
 
   t.test("usage-page links open with xdg-open", function()
@@ -304,13 +338,13 @@ t.group("accounts", function()
 
   t.test("a provider that isn't signed in offers the sign-in", function()
     local host = env.host()
-    host.commands["codex"] = true
+    host.commands["claude"] = true
     env.start(host, "service.luau")
     openPanel(host)
-    local row = env.find(host.panelTree, function(n) return n.props.key == "off-codex" end)[1]
+    local row = env.find(host.panelTree, function(n) return n.props.key == "off-claude" end)[1]
     button(row, function(p) return p.text == "Sign in" end).props.onClick()
-    t.eq(host.terminals[1]:find("'codex' 'login'", 1, true) ~= nil, true, host.terminals[1])
-    t.eq(host.terminals[1]:find("CODEX_HOME", 1, true), nil, "the default account signs in where the CLI looks")
+    t.eq(host.terminals[1]:find("'claude' 'auth' 'login'", 1, true) ~= nil, true, host.terminals[1])
+    t.eq(host.terminals[1]:find("CLAUDE_CONFIG_DIR", 1, true), nil, "the default account signs in where the CLI looks")
   end)
 end)
 

@@ -112,53 +112,6 @@ t.group("claude", function()
   end)
 end)
 
-t.group("codex", function()
-  t.test("parses the live response", function()
-    local host, codex, ctx = env.provider("codex")
-    local snap = codex.parse(host.globals.noctalia.json.decode(env.fixture("codex_usage.json")), nil, ctx)
-    t.eq(snap.plan, "Plus")
-    local w = byId(snap.windows)
-    t.eq(w.primary_window.kind, "session")
-    t.eq(w.primary_window.usedPercent, 51)
-    t.eq(w.primary_window.periodSeconds, 18000)
-    t.eq(w.primary_window.resetsAt, 1791056429)
-    t.eq(w.secondary_window.kind, "weekly")
-  end)
-
-  t.test("labels code review and feature limits; credits note", function()
-    local host, codex, ctx = env.provider("codex")
-    local data = host.globals.noctalia.json.decode(env.fixture("codex_usage.json"))
-    data.code_review_rate_limit = { primary_window = { used_percent = 5, limit_window_seconds = 604800, reset_after_seconds = 60 } }
-    data.additional_rate_limits = { { limit_name = "GPT-6 Astra", rate_limit = { primary_window = { used_percent = 33 } } } }
-    data.credits = { has_credits = true, balance = "120" }
-    local w = byId(codex.parse(data, nil, ctx).windows)
-    t.eq(w["code_review:primary_window"].label, "Code review · 7d")
-    t.eq(w["code_review:primary_window"].resetsAt, host.clock + 60)
-    t.eq(w["extra:GPT-6 Astra:primary_window"].label, "GPT-6 Astra")
-  end)
-
-  t.test("sends the account header; plan falls back to the id token", function()
-    local host, codex, ctx = env.provider("codex")
-    env.codexAuth(host)
-    local json = host.globals.noctalia.json
-    local body = json.decode(env.fixture("codex_usage.json"))
-    body.plan_type = nil
-    env.serve(host, { ["chatgpt.com"] = json.encode(body) })
-    local snap = fetch(codex, ctx)
-    t.eq(snap.plan, "Pro")
-    t.eq(env.headerOf(host.requests[1], "ChatGPT-Account-Id"), "acct-1")
-  end)
-
-  t.test("API-key-only setup or an expired token: no request", function()
-    local host, codex, ctx = env.provider("codex")
-    host.files[env.CODEX_AUTH] = '{"auth_mode":"apikey","OPENAI_API_KEY":"sk-x","tokens":null}'
-    t.eq(select(2, fetch(codex, ctx)).code, "not_configured")
-    env.codexAuth(host, { access_token = env.JWT_EXPIRED, account_id = "a" })
-    t.eq(select(2, fetch(codex, ctx)).code, "expired")
-    t.eq(#host.requests, 0)
-  end)
-end)
-
 t.group("antigravity", function()
   local KEYRING = "secret-tool lookup service gemini username antigravity"
   local RENEW = "env AGY_CLI_DISABLE_AUTO_UPDATE=true agy models"

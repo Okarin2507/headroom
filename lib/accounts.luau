@@ -2,8 +2,7 @@
 -- Accounts: the sign-ins Headroom shows for each provider.
 --
 -- A provider whose CLI keeps its sign-in in a config folder (Claude Code reads
--- CLAUDE_CONFIG_DIR, Codex reads CODEX_HOME) can have several accounts, one
--- per folder:
+-- CLAUDE_CONFIG_DIR) can have several accounts, one per folder:
 --   default  the folder the CLI uses when nothing says otherwise
 --   added    a folder Headroom created under its data dir; the vendor's own
 --            login command, run in a terminal, signs in there

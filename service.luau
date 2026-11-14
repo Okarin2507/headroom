@@ -13,7 +13,9 @@
 --   network  each signed-in account's usage endpoint (see providers/*)
 --   reads    each account's saved sign-in (read-only); see providers/*
 --   spawns   what adapters declare (Claude: claude; Antigravity: secret-tool,
---            agy), `rm -rf` on the folder of an added account being removed,
+--            agy), `python3 -I -c` to add up the local token counts
+--            (lib/analytics.luau, read-only), `rm -rf` on the folder of an
+--            added account being removed,
 --            and a terminal running the vendor's login when signing in
 --   writes   <pluginDataDir>/cache.json (snapshots only, never credentials),
 --            <pluginDataDir>/accounts.json (names of added accounts, hidden
@@ -29,6 +31,7 @@ local state = require("./lib/state.luau")
 local time = require("./lib/time.luau")
 local notify = require("./lib/notify.luau")
 local fs = require("./lib/fs.luau")
+local analytics = require("./lib/analytics.luau")
 
 local E = model.ErrorCode
 local TICK_MS = 5000
@@ -62,6 +65,9 @@ type Runtime = {
   notified: { [string]: number }, -- window id -> resetsAt we already warned about
   signingInSince: number?, -- a login terminal was opened for this account
   duplicateOf: string?, -- signed in to the same account as this earlier one (its key); not fetched
+  analytics: analytics.Report?, -- local token counts (lib/analytics.luau); never cached on disk
+  analyticsAt: number, -- when they were last collected
+  analyticsBusy: boolean,
 }
 
 local runtimes: { [string]: Runtime } = {}
@@ -83,6 +89,14 @@ end
 local function intervalSeconds(): number
   return math.clamp(state.config("refresh_minutes", 5), 1, 120) * 60
 end
+
+local function analyticsEnabled(): boolean
+  return state.config("analytics", true)
+end
+
+-- Local file scans are cheap but not free, so they run less often than the
+-- usage endpoints, whatever the refresh interval.
+local ANALYTICS_MIN_SECONDS = 120
 
 local function eachListed(fn: (Runtime) -> ())
   for _, p in registry do
@@ -184,6 +198,9 @@ local function newRuntime(p, account: accounts.Account): Runtime
     notified = {},
     signingInSince = nil,
     duplicateOf = nil,
+    analytics = nil,
+    analyticsAt = -math.huge,
+    analyticsBusy = false,
   }
   checkSignIn(rt, base.now())
   local entry = cached[account.key]
@@ -325,6 +342,7 @@ local function publish()
           launch = launchCommand(rt),
           status = statusOf(rt),
           snapshot = rt.snapshot,
+          analytics = if analyticsEnabled() then rt.analytics else nil,
           error = rt.error,
           stale = rt.stale,
           busy = scheduler.isBusy(rt.schedule, now),
@@ -406,6 +424,44 @@ local function fetchAccount(rt: Runtime, now: number)
   end
 end
 
+-- Where the account's current 5-hour session began, from its usage window: the
+-- reset time less the window's length. nil when unknown (the report then falls
+-- back to the last five hours).
+local function sessionStartOf(rt: Runtime, now: number): number?
+  local snapshot = rt.snapshot
+  local window = snapshot and model.pick(snapshot.windows, "session")
+  if window == nil or window.kind ~= "session" or window.resetsAt == nil or window.resetsAt <= now then
+    return nil
+  end
+  return window.resetsAt - (window.periodSeconds or model.SESSION_SECONDS)
+end
+
+-- Collects the account's token counts when they are due. The result publishes
+-- when it lands; a missing python3 or a failed run keeps the last good report.
+local function collectAnalytics(rt: Runtime, now: number): boolean
+  local spec = rt.provider.analytics
+  if spec == nil or rt.analyticsBusy or not analyticsEnabled() then
+    return false
+  end
+  if now - rt.analyticsAt < math.max(ANALYTICS_MIN_SECONDS, intervalSeconds()) then
+    return false
+  end
+  rt.analyticsBusy = true
+  rt.analyticsAt = now
+  local ok, thrown = pcall(analytics.collect, rt.ctx, spec, sessionStartOf(rt, now), function(report)
+    rt.analyticsBusy = false
+    if report then
+      rt.analytics = report
+      publish()
+    end
+  end)
+  if not ok then
+    rt.analyticsBusy = false
+    noctalia.log(`[headroom] {rt.account.key}: analytics error: {thrown}`)
+  end
+  return false
+end
+
 local function tick(recheckSignIn: boolean?)
   local now = base.now()
   local changed = false
@@ -443,6 +499,9 @@ local function tick(recheckSignIn: boolean?)
       fetchAccount(rt, now)
       changed = true
     end
+    if rt.configured and rt.duplicateOf == nil then
+      collectAnalytics(rt, now)
+    end
   end)
   if resync then
     syncAccounts() -- it may no longer be a duplicate; the next tick fetches it
@@ -467,6 +526,10 @@ local function refresh(maxAge: number?)
       else rt.error == nil and (rt.stale or rt.snapshot == nil or now - (rt.snapshot.fetchedAt or 0) >= maxAge)
     if wanted then
       scheduler.force(rt.schedule, now)
+    end
+    -- Opening the panel asks for fresh usage; the local counts follow their own pace.
+    if maxAge == nil then
+      rt.analyticsAt = -math.huge
     end
   end)
   tick(true)

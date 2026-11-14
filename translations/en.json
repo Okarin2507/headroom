@@ -36,6 +36,20 @@
     "m": "{m}m ago",
     "now": "just now"
   },
+  "analytics": {
+    "breakdown": "in {input} · out {output} · cache read {cache_read} · cache write {cache_write} · {messages} responses",
+    "collapse": "Hide token usage",
+    "day_tooltip": "{day}: {tokens} tokens",
+    "expand": "Show token usage",
+    "footnote": "Tokens = input + output + cache writes, counted from this computer's logs. Hover for the cache and response counts.",
+    "models": "By model · last 7 days",
+    "month": "Last 30 days",
+    "none": "No token usage found in the last 30 days.",
+    "session": "This 5-hour session",
+    "title": "Token usage",
+    "today": "Today",
+    "week": "Last 7 days"
+  },
   "bar": {
     "empty": "Headroom: no AI provider sign-in found"
   },
@@ -79,11 +93,9 @@
     }
   },
   "note": {
-    "credits": "Credits",
     "extra_usage": "Extra usage",
     "of": "{used} of {limit}",
-    "on": "On",
-    "unlimited": "Unlimited"
+    "on": "On"
   },
   "notify": {
     "body": "{window} is at {percent}%.",
@@ -123,9 +135,6 @@
     },
     "claude": {
       "hint": "Run `claude` once to sign in or renew the session."
-    },
-    "codex": {
-      "hint": "Run `codex login` and sign in with ChatGPT."
     }
   },
   "reset": {
@@ -133,6 +142,10 @@
     "now": "Resetting now"
   },
   "settings": {
+    "analytics": {
+      "description": "Add up the token counts Claude Code and Antigravity keep on this computer (needs python3). Read-only; nothing leaves the machine.",
+      "label": "Data · Token analytics"
+    },
     "bar_accounts": {
       "description": "Which accounts the bar shows when a provider has several. The panel always shows them all.",
       "label": "Bar · Accounts",
@@ -184,9 +197,6 @@
     "provider_claude": {
       "label": "Providers · Claude"
     },
-    "provider_codex": {
-      "label": "Providers · Codex"
-    },
     "refresh_minutes": {
       "description": "Minutes between fetches for each provider. Failed fetches retry sooner.",
       "label": "Data · Refresh interval (min)"
@@ -212,10 +222,11 @@
   },
   "tooltip": {
     "forecast": "Forecast",
-    "resets": "Resets"
+    "resets": "Resets",
+    "tokens": "Tokens",
+    "tokens_value": "{tokens} this session · {today} today"
   },
   "window": {
-    "code_review": "Code review",
     "other": "Limit",
     "session": "Session",
     "weekly": "Weekly",

@@ -12,12 +12,10 @@ M.find = hostLib.find
 M.texts = hostLib.texts
 
 M.CLAUDE_CREDS = "/home/test/.claude/.credentials.json"
-M.CODEX_AUTH = "/home/test/.codex/auth.json"
 
 -- JWTs (alg none) whose exp is relative to the host's default clock 1_790_000_000.
 M.JWT_VALID = "eyJhbGciOiJub25lIn0.eyJleHAiOjE3OTAwMDM2MDB9.sig"
 M.JWT_EXPIRED = "eyJhbGciOiJub25lIn0.eyJleHAiOjE3ODk5OTAwMDB9.sig"
-M.JWT_ID_PRO = "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9wbGFuX3R5cGUiOiJwcm8ifX0.sig"
 
 -- A fresh host whose filesystem already holds the plugin's own assets
 -- (plugin-relative paths, as Noctalia resolves them).
@@ -68,11 +66,10 @@ function M.claudeProfile(host, accountUuid: string, home: string?)
   })
 end
 
-function M.codexAuth(host, tokens)
-  host.files[M.CODEX_AUTH] = host.globals.noctalia.json.encode({
-    auth_mode = "chatgpt",
-    tokens = tokens or { access_token = M.JWT_VALID, id_token = M.JWT_ID_PRO, account_id = "acct-1" },
-  })
+-- Antigravity's CLI session (token file, no keyring), valid for the whole run.
+M.AGY_TOKEN = "/home/test/.gemini/antigravity-cli/antigravity-oauth-token"
+function M.antigravityAuth(host)
+  host.files[M.AGY_TOKEN] = '{"token":{"access_token":"ya29.test","refresh_token":"r","expiry":"2030-01-01T00:00:00Z"}}'
 end
 
 -- Routes requests by host to fixture bodies (or a custom status).

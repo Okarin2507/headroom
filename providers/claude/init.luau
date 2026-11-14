@@ -208,6 +208,15 @@ return provider.define({
     end,
   },
 
+  -- Token analytics come from the transcripts Claude Code keeps in this
+  -- account's folder (<folder>/projects/**/*.jsonl); see lib/analytics.luau.
+  analytics = {
+    source = "claude",
+    folders = function(ctx)
+      return { ctx.home }
+    end,
+  },
+
   isConfigured = function(ctx)
     return ctx.fileExists(credentialsPath(ctx))
   end,

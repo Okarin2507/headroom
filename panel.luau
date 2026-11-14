@@ -26,6 +26,7 @@ local adding: string? = nil -- provider whose add form is open
 local addDraft = ""
 local renaming: string? = nil -- account whose name is being edited
 local renameDraft = ""
+local analyticsOpen = true -- the token sections; kept across opens
 local confirming: { key: string, untilAt: number }? = nil
 local copied: { key: string, untilAt: number }? = nil
 
@@ -60,6 +61,10 @@ local cardOptions = {
   onCopy = function(key: string, text: string)
     noctalia.copyToClipboard(text, "text/plain")
     copied = { key = key, untilAt = view.now() + COPIED_SECONDS }
+    render()
+  end,
+  onToggleAnalytics = function()
+    analyticsOpen = not analyticsOpen
     render()
   end,
   onAddOpen = function(id: string)
@@ -134,6 +139,7 @@ function render()
   lastRenderAt = now
   cardOptions.adding = adding
   cardOptions.renaming = renaming
+  cardOptions.analyticsOpen = analyticsOpen
   cardOptions.confirmingRemove = if confirming and now < confirming.untilAt then confirming.key else nil
   cardOptions.copied = if copied and now < copied.untilAt then copied.key else nil
 

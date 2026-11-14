@@ -234,7 +234,7 @@ function M.new(sources)
     end
   end
   local ui = {}
-  for _, kind in { "column", "row", "scroll", "label", "glyph", "image", "separator", "progress", "button", "input" } do
+  for _, kind in { "column", "row", "scroll", "label", "glyph", "image", "separator", "progress", "box", "button", "input" } do
     ui[kind] = node(kind)
   end
 

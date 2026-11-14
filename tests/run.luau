@@ -4,6 +4,7 @@
 local t = require("./support/t")
 
 require("./lib_spec")
+require("./analytics_spec")
 require("./providers_spec")
 require("./service_spec")
 require("./surfaces_spec")
