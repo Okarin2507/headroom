@@ -164,6 +164,30 @@ t.group("antigravity", function()
     t.eq(w["3p-5h"].label, "Claude & GPT · Session")
   end)
 
+  t.test("Gemini's windows come first, session before weekly, then the other models'", function()
+    local host, p, ctx = env.provider("antigravity")
+    local snap = p.parse(host.globals.noctalia.json.decode(env.fixture("antigravity_quota.json")), ctx)
+    local ids = {}
+    for _, w in snap.windows do
+      table.insert(ids, w.id)
+    end
+    t.eq(table.concat(ids, ","), "gemini-5h,gemini-weekly,3p-5h,3p-weekly")
+  end)
+
+  t.test("a Gemini window found in the model list also goes first", function()
+    local _, p, ctx = setup({
+      keyring = session(FRESH),
+      quota = env.fixture("antigravity_quota_3p_only.json"),
+      models = env.fixture("antigravity_models.json"),
+    })
+    local snap = fetch(p, ctx)
+    local ids = {}
+    for _, w in snap.windows do
+      table.insert(ids, w.id)
+    end
+    t.eq(table.concat(ids, ","), "gemini-5h,3p-5h,3p-weekly")
+  end)
+
   t.test("a bucket without a valid fraction is skipped, never shown as 0%", function()
     local _, p, ctx = env.provider("antigravity")
     local snap = p.parse({ groups = { { displayName = "Gemini Models", buckets = {

@@ -136,6 +136,26 @@ local function groupLabel(name: any): string
   return name
 end
 
+-- The panel lists windows in this order: Gemini first (session, then weekly),
+-- then the other models' (session, then weekly). Stable otherwise.
+local function sortWindows(windows: { model.Window })
+  local function rank(w: model.Window): number
+    local group = if w.label:sub(1, 6) == "Gemini" then 0 else 10
+    return group + (if w.kind == "session" then 0 elseif w.kind == "weekly" then 1 else 2)
+  end
+  local position = {}
+  for i, w in windows do
+    position[w] = i
+  end
+  table.sort(windows, function(a, b)
+    local ra, rb = rank(a), rank(b)
+    if ra ~= rb then
+      return ra < rb
+    end
+    return position[a] < position[b]
+  end)
+end
+
 -- Exposed for tests: quota summary -> Snapshot. The API reports what is left;
 -- every other provider reports what is spent, so it is inverted here.
 local function parse(data, ctx): (model.Snapshot?, model.ProviderError?)
@@ -171,6 +191,7 @@ local function parse(data, ctx): (model.Snapshot?, model.ProviderError?)
   if #windows == 0 then
     return nil, model.err(E.Parse, "no usable quota buckets")
   end
+  sortWindows(windows)
   return model.snapshot({ plan = nil, windows = windows, notes = {}, fetchedAt = ctx.now() }), nil
 end
 
@@ -242,6 +263,7 @@ local function withGemini(ctx, headers, snapshot: model.Snapshot?, done: (model.
     for _, w in windows do
       table.insert(snapshot.windows, w)
     end
+    sortWindows(snapshot.windows)
     done(snapshot)
   end)
 end
