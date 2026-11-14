@@ -5,7 +5,7 @@
 
 local M = {}
 
-M.PANEL_ID = "ayagmar/headroom:panel"
+M.PANEL_ID = "okarin/headroom:panel"
 M.VERSION = "0.3.0"
 
 -- Published by the service:

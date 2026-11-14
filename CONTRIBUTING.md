@@ -84,12 +84,12 @@ The bar and the panel need no changes.
 
 ```sh
 ln -sfn "$PWD" ~/.local/share/noctalia/plugins/headroom
-noctalia msg plugins enable ayagmar/headroom
+noctalia msg plugins enable okarin/headroom
 ```
 
 `.luau` edits reload on their own. `plugin.toml` and `translations/` are read only when the plugin is enabled
 (`noctalia msg config-reload` doesn't re-read them), so after changing either, run
-`noctalia msg plugins disable ayagmar/headroom && noctalia msg plugins enable ayagmar/headroom`.
+`noctalia msg plugins disable okarin/headroom && noctalia msg plugins enable okarin/headroom`.
 
 Logs are in `~/.cache/noctalia/noctalia.log` (`grep headroom`).
 

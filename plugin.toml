@@ -9,11 +9,11 @@
 # plugin_api 32: argv runAsync (24), noctalia.getColor (31) for theme-tinted
 # logos and gauges, and container tooltips (32) on the panel's time tracks.
 
-id = "ayagmar/headroom"
+id = "okarin/headroom"
 name = "Headroom"
 version = "0.3.0"
 plugin_api = 32
-author = "ayagmar"
+author = "okarin"
 license = "MIT"
 icon = "gauge"
 description = "How much of your Claude and Antigravity plan limits is left, per account, with reset times and forecasts."
@@ -176,10 +176,10 @@ entry = "bar.luau"
   # in the widget's settings and users can rebind it.
   # Middle click opens Headroom's settings page: all options live there.
   [widget.actions]
-  right = "plugin ayagmar/headroom:poller all refresh"
-  middle = "settings-open-plugin ayagmar/headroom"
+  right = "plugin okarin/headroom:poller all refresh"
+  middle = "settings-open-plugin okarin/headroom"
 
-# Open with: noctalia msg panel-toggle ayagmar/headroom:panel
+# Open with: noctalia msg panel-toggle okarin/headroom:panel
 [[panel]]
 id = "panel"
 entry = "panel.luau"

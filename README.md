@@ -17,7 +17,7 @@ Claude account, it shows each one's usage, and you can add more from the panel.
 
 | Field | Value |
 | --- | --- |
-| ID | `ayagmar/headroom` |
+| ID | `okarin/headroom` |
 | Entries | Bar widget: `usage`; panel: `panel`; service: `poller` |
 
 ## Requirements
@@ -63,7 +63,7 @@ Each signed-in provider shows its logo and how much of one window it has used (o
 | Action | What it does |
 | --- | --- |
 | Left click | Opens the panel. Data older than 2 minutes is fetched again while it opens. |
-| Right click | Refreshes now (`plugin ayagmar/headroom:poller all refresh`; rebind it in the widget's settings). |
+| Right click | Refreshes now (`plugin okarin/headroom:poller all refresh`; rebind it in the widget's settings). |
 | Middle click | Opens Headroom's settings. |
 | Hover | Shows each window's usage, reset time and forecast. |
 
@@ -136,7 +136,7 @@ Switching which account the CLI uses by default isn't supported yet. Antigravity
 it has one account.
 
 ```sh
-noctalia msg panel-toggle ayagmar/headroom:panel
+noctalia msg panel-toggle okarin/headroom:panel
 ```
 
 ## Settings
@@ -178,7 +178,7 @@ with the plugin, so to get one added (Copilot, Cursor, OpenRouter, …), open an
 
 ```sh
 # Refresh every provider now
-noctalia msg plugin ayagmar/headroom:poller all refresh
+noctalia msg plugin okarin/headroom:poller all refresh
 ```
 
 ## Notes
@@ -195,7 +195,7 @@ noctalia msg plugin ayagmar/headroom:poller all refresh
   (`claude`, `agy`; see *Processes*). If that CLI isn't installed or the renewal fails, the card asks you to sign in
   again, and Headroom notices the new session within a minute. Found accounts aren't renewed either: their sessions
   belong to whoever runs the CLI in that folder. When you add an account, the CLI writes its sign-in, not Headroom.
-- **Files written.** All in `~/.local/state/noctalia/plugins/data/ayagmar/headroom/`:
+- **Files written.** All in `~/.local/state/noctalia/plugins/data/okarin/headroom/`:
   - `cache.json`: the last usage numbers, so the bar has data right after login. No credentials.
   - `accounts.json`: the names you gave accounts, the accounts you added and the found folders you hid. No credentials.
   - `accounts/<provider>/<name>/`: one empty folder per added account, which the CLI then signs in to.
