@@ -61,6 +61,32 @@ t.group("service", function()
     t.eq(account(host, "claude").busy, true)
   end)
 
+  t.test("a refresh naming a provider fetches only that provider", function()
+    local host = signedInClaude()
+    env.antigravityAuth(host)
+    env.serve(host, {
+      ["api.anthropic.com"] = env.claudeBody(host),
+      ["loadCodeAssist"] = '{"paidTier":{"name":"Google AI Pro"}}',
+      ["retrieveUserQuotaSummary"] = env.fixture("antigravity_quota_full.json"),
+    })
+    local state = host.globals.noctalia.state
+    env.start(host, "service.luau")
+    t.eq(account(host, "antigravity").email, "dev@example.com", "who is signed in is published")
+    local function count(needle)
+      local n = 0
+      for _, req in host.requests do
+        if req.url:find(needle, 1, true) then
+          n += 1
+        end
+      end
+      return n
+    end
+    local claudeBefore, agyBefore = count("api.anthropic.com"), count("retrieveUserQuotaSummary")
+    state.set("command", { action = "refresh", provider = "antigravity", at = 1 })
+    t.eq(count("api.anthropic.com"), claudeBefore, "Claude is left alone")
+    t.eq(count("retrieveUserQuotaSummary"), agyBefore + 1, "Antigravity is fetched now")
+  end)
+
   t.test("errors keep the last good snapshot, marked stale, with backoff", function()
     local host = signedInClaude()
     local svc = env.start(host, "service.luau")

@@ -69,7 +69,7 @@ end
 -- Antigravity's CLI session (token file, no keyring), valid for the whole run.
 M.AGY_TOKEN = "/home/test/.gemini/antigravity-cli/antigravity-oauth-token"
 function M.antigravityAuth(host)
-  host.files[M.AGY_TOKEN] = '{"token":{"access_token":"ya29.test","refresh_token":"r","expiry":"2030-01-01T00:00:00Z"}}'
+  host.files[M.AGY_TOKEN] = '{"token":{"access_token":"ya29.test","refresh_token":"r","expiry":"2030-01-01T00:00:00Z"},"id_token_email":"dev@example.com"}'
 end
 
 -- Routes requests by host to fixture bodies (or a custom status).

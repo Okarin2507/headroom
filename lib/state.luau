@@ -21,7 +21,7 @@ M.VERSION = "0.3.0"
 --   { key,                         stable id; commands name accounts by it
 --     kind: "default" | "added" | "found",
 --     label: string?,              nil for the default account unless renamed
---     email: string?, home: string?,   for tooltips
+--     email: string?, home: string?,   who is signed in (their sign-in file), where their folder is
 --     launch: string?,             shell command starting the CLI as this account
 --     status: "loading" | "ok" | "error" | "absent",   absent = not signed in
 --     snapshot: Snapshot?,         last good data, kept through errors
@@ -35,7 +35,7 @@ M.VERSION = "0.3.0"
 M.REPORT = "report"
 
 -- Written by bar/panel, watched by the service. `at` makes repeats distinct.
---   { action = "refresh", maxAge? }
+--   { action = "refresh", maxAge?, provider? }   provider: only that one's accounts
 --   { action = "add", provider, label }    new account, then its login
 --   { action = "sign_in", key }            the login, for an existing account
 --   { action = "rename", key, label }      "" gives back the usual name
@@ -48,9 +48,10 @@ local function send(command)
 end
 
 -- Asks the service for fresh data. `maxAge` (seconds) skips accounts fetched
--- more recently than that; without it every account is fetched.
-function M.requestRefresh(maxAge: number?)
-  send({ action = "refresh", maxAge = maxAge })
+-- more recently than that; without it every account is fetched. `providerId`
+-- limits the request to that provider's accounts.
+function M.requestRefresh(maxAge: number?, providerId: string?)
+  send({ action = "refresh", maxAge = maxAge, provider = providerId })
 end
 
 function M.addAccount(providerId: string, label: string)

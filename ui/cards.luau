@@ -21,6 +21,7 @@ local SIGN_IN_ERRORS = { not_configured = true, expired = true, auth = true }
 -- Panel options:
 --   onOpenDashboard(url)?   shows the usage-page button when given
 --   onRefresh()
+--   onRefreshProvider(id)   fetches that provider's accounts now (button in its card)
 --   onSignIn(key), onRemove(key), onCopy(key, text)
 --   adding: string?         id of the provider whose add form is open
 --   onAddOpen(id), onAddCancel(), onAddChange(text), onAddSubmit(id)
@@ -519,13 +520,32 @@ function M.providerCard(provider, now: number, options: Options)
   local subtitle = if single
     then accountStatus(accounts[1])
     else noctalia.tr("accounts.count", { n = #accounts })
+  -- With one account the card is that account: say who is signed in.
+  local email = if single then accounts[1].email else nil
+  local busy = false
+  for _, account in accounts do
+    busy = busy or account.busy == true
+  end
   local headerChildren = {
     M.logo(provider, 22),
     ui.column({ gap = 1, flexGrow = 1 }, {
       ui.label({ text = provider.name, fontSize = 14, fontWeight = "semibold", color = "on_surface" }),
       M.caption(subtitle or " ", nil, { visible = subtitle ~= nil }),
+      M.caption(email or " ", nil, { visible = email ~= nil, maxLines = 1 }),
     }),
   }
+  if options.onRefreshProvider then
+    table.insert(headerChildren, ui.button({
+      glyph = "refresh",
+      variant = "ghost",
+      controlSize = "sm",
+      enabled = not busy,
+      tooltip = noctalia.tr("panel.refresh_provider_tooltip", { provider = provider.name }),
+      onClick = function()
+        options.onRefreshProvider(provider.id)
+      end,
+    }))
+  end
   if provider.canAdd and options.adding ~= provider.id then
     table.insert(headerChildren, ui.button({
       glyph = "user-plus",

@@ -122,6 +122,7 @@
     "not_connected": "{provider} · not connected",
     "not_refreshed": "Not refreshed yet",
     "open_dashboard": "Open {provider} usage page",
+    "refresh_provider_tooltip": "Refresh {provider} now",
     "refresh_tooltip": "Refresh now (R)",
     "remaining_tooltip": "{percent}% of this window remains",
     "retry": "Retry",

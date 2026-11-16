@@ -165,6 +165,27 @@ t.group("panel", function()
     t.ok(#env.ofType(host.panelTree, "progress") >= 5, "a meter per window")
   end)
 
+  t.test("a card shows who is signed in and has its own refresh button", function()
+    local host = running()
+    local _, texts = openPanel(host)
+    t.contains(texts, "dev@example.com")
+    local function withTooltip(text)
+      for _, n in env.ofType(host.panelTree, "button") do
+        if n.props.tooltip == text then
+          return n
+        end
+      end
+      return nil
+    end
+    local btn = withTooltip("Refresh Antigravity now")
+    t.ok(btn ~= nil, "refresh button on the Antigravity card")
+    t.ok(withTooltip("Refresh Claude now") ~= nil)
+    local before = #host.requests
+    btn.props.onClick()
+    t.eq(host.stateValues.command.provider, "antigravity")
+    t.ok(#host.requests > before, "the provider is fetched right away")
+  end)
+
   t.test("reset clock, projection and remaining mode", function()
     local host = running({ config = { display = "remaining" } })
     host.clock = 1791100799 - 2 * 86400 -- weekly: 5 of 7 days elapsed

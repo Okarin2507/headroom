@@ -46,6 +46,9 @@ local cardOptions = {
   onRefresh = function()
     state.requestRefresh()
   end,
+  onRefreshProvider = function(id: string)
+    state.requestRefresh(nil, id)
+  end,
   onSignIn = function(key: string)
     state.signIn(key)
   end,

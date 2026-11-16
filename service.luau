@@ -337,7 +337,7 @@ local function publish()
           key = key,
           kind = rt.account.kind,
           label = if rt.duplicateOf then rt.account.label else labelOf(rt), -- a duplicate goes by its folder's name
-          email = rt.identity and rt.identity.email,
+          email = (rt.identity and rt.identity.email) or (rt.snapshot and rt.snapshot.email),
           home = rt.account.home,
           launch = launchCommand(rt),
           status = statusOf(rt),
@@ -516,10 +516,14 @@ end
 -- is fetched now, except one the API throttled: asking again before its wait
 -- is over only extends it. With `maxAge` (opening the panel), only accounts
 -- whose last good data is older than `maxAge` are fetched, and an account in
--- backoff after a failure keeps its backoff.
-local function refresh(maxAge: number?)
+-- backoff after a failure keeps its backoff. `providerId` limits the request
+-- to that provider's accounts (the refresh button on its card).
+local function refresh(maxAge: number?, providerId: string?)
   local now = base.now()
   eachListed(function(rt)
+    if providerId ~= nil and rt.provider.id ~= providerId then
+      return
+    end
     local throttled = rt.error ~= nil and rt.error.code == E.RateLimited and not scheduler.isDue(rt.schedule, now)
     local wanted = if maxAge == nil
       then not throttled
@@ -621,7 +625,7 @@ local function onCommand(command)
   end
   local action = command.action
   if action == "refresh" then
-    refresh(tonumber(command.maxAge))
+    refresh(tonumber(command.maxAge), if type(command.provider) == "string" then command.provider else nil)
   elseif action == "add" and type(command.provider) == "string" then
     addAccount(command.provider, if type(command.label) == "string" then command.label else "")
   elseif (action == "sign_in" or action == "rename" or action == "remove") and type(command.key) == "string" then

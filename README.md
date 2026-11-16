@@ -88,7 +88,9 @@ One card per provider, with a meter for every window (Session, Weekly, Weekly ·
 - **Problems.** An expired session, a rejected sign-in or a network failure is explained on the card, with what to
   do about it. The last numbers stay visible, marked as cached.
 
-In the panel, `R` refreshes and `Esc` closes.
+In the panel, `R` refreshes everything and `Esc` closes. Each provider's card has its own refresh button, which fetches only that
+provider (Antigravity's included), and a single-account card names who is signed in (Antigravity's email comes from the
+`id_token_email` that `agy` stores next to its token; nothing is fetched for it).
 
 ### Token usage
 

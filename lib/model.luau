@@ -28,6 +28,7 @@ export type Note = {
 
 export type Snapshot = {
   plan: string?,
+  email: string?, -- who is signed in, when the vendor's sign-in says so
   windows: { Window },
   notes: { Note },
   fetchedAt: number, -- Unix seconds

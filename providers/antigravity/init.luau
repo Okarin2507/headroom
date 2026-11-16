@@ -63,7 +63,7 @@ local KEYRING_BACKOFF = 30 * 60
 local keyringFailedAt = -math.huge
 local accountCache: { plan: string?, project: string?, at: number } = { plan = nil, project = nil, at = -math.huge }
 
-type Session = { accessToken: string, expiry: any }
+type Session = { accessToken: string, expiry: any, email: string? }
 
 -- Accepts go-keyring's "go-keyring-base64:" wrapper, a { token = {...} }
 -- envelope or a flat token object, with snake_case or camelCase keys.
@@ -88,7 +88,13 @@ local function parseSession(raw: string?, ctx): Session?
   if type(access) ~= "string" or access == "" then
     return nil
   end
-  return { accessToken = access, expiry = token.expiry or token.expires_at or token.expiresAt }
+  -- agy records who signed in next to the token; read locally, never fetched.
+  local email = data.id_token_email or token.id_token_email
+  return {
+    accessToken = access,
+    expiry = token.expiry or token.expires_at or token.expiresAt,
+    email = if type(email) == "string" and email ~= "" then email else nil,
+  }
 end
 
 local function readSession(ctx, done: (Session?) -> ())
@@ -350,6 +356,7 @@ local function query(ctx, session: Session, done)
           return
         end
         complete.plan = plan
+        complete.email = session.email
         done(complete, nil)
       end)
     end, classify)
