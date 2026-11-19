@@ -13,7 +13,7 @@ local cards = require("./cards.luau")
 
 local M = {}
 
-local CHART_HEIGHT = 56
+local CHART_HEIGHT = 64
 local MODEL_ROWS = 6
 local COLUMN = 64
 
@@ -189,18 +189,36 @@ local function chart(data)
     if #segments == 0 then
       table.insert(segments, ui.box({ width = barWidth, height = 2, radius = 1, fill = "on_surface/0.10" }))
     end
-    -- Names under a few bars only: 24 labels would not fit.
-    local labelled = if count > 12 then (i == 1 or i == count or i == math.ceil(count / 2)) else true
-    local text = if count > 12 then `{slot.label}:00` else slot.label
-    table.insert(columns, ui.column({ key = `{slot.date or slot.label}-{i}`, flexGrow = 1, align = "center", justify = "end", gap = 3, height = CHART_HEIGHT + 18 }, {
-      ui.column({ gap = 1, align = "center", justify = "end" }, segments),
-      cards.caption(if labelled then text else " ", nil, { fontSize = 9, maxLines = 1 }),
-    }))
+    -- Per-day names fit under their bars; 24 hours get one axis line instead.
+    local children = { ui.column({ gap = 1, align = "center", justify = "end" }, segments) }
+    if count <= 12 then
+      table.insert(children, cards.caption(slot.label, nil, { fontSize = 10, maxLines = 1 }))
+    end
+    table.insert(columns, ui.column({
+      key = `{slot.date or slot.label}-{i}`,
+      flexGrow = 1,
+      align = "center",
+      justify = "end",
+      gap = 3,
+      height = CHART_HEIGHT + (if count <= 12 then 18 else 0),
+    }, children))
   end
-  return ui.column({ gap = 6 }, {
+  local body = {
     title(noctalia.tr(data.range.chart)),
     ui.row({ gap = if count > 12 then 2 else 4, align = "end" }, columns),
-  })
+  }
+  if count > 12 then
+    -- Start, middle and end of the day: "14:00   02:00   now".
+    local function at(i: number): string
+      return `{data.series[i].label}:00`
+    end
+    table.insert(body, ui.row({ align = "center" }, {
+      cards.caption(at(1), nil, { fontSize = 10, flexGrow = 1, maxLines = 1 }),
+      cards.caption(at(math.ceil(count / 2)), nil, { fontSize = 10, flexGrow = 1, textAlign = "center", maxLines = 1 }),
+      cards.caption(at(count), nil, { fontSize = 10, flexGrow = 1, textAlign = "right", maxLines = 1 }),
+    }))
+  end
+  return ui.column({ gap = 8 }, body)
 end
 
 local function cell(label: string, value: string)
@@ -283,7 +301,7 @@ function M.view(providers, options): { any }
   table.insert(nodes, totals(data))
   table.insert(nodes, modelRows(data))
   table.insert(nodes, cards.caption(noctalia.tr("analytics.footnote"), "on_surface_variant/0.8", { fontSize = 10, maxLines = 3 }))
-  return { ui.column({ gap = 16, padding = 14, radius = 14, fill = "surface_variant/0.45" }, nodes) }
+  return { ui.column({ gap = 20, padding = 16, radius = 14, fill = "surface_variant/0.45" }, nodes) }
 end
 
 return M

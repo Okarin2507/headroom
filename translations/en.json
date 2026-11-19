@@ -40,6 +40,7 @@
     "breakdown": "In {input} · Out {output} · {messages} responses",
     "collapse": "Hide token usage",
     "daily": "Per day · In + Out",
+    "day": "Last 24 hours",
     "day_tooltip": "{day}: {tokens}",
     "expand": "Show token usage",
     "footnote": "Counted from this computer's logs. In is what the model read anew (not re-served from cache); Out includes thinking.",

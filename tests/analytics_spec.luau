@@ -71,6 +71,15 @@ local function running(opts)
   return host, env.start(host, "service.luau")
 end
 
+-- Presses a provider's logo at the top right of the panel (it opens on the Overview).
+local function pick(host, id)
+  local node = env.find(host.panelTree, function(n)
+    return n.props.key == `switch-{id}`
+  end)[1]
+  t.ok(node ~= nil, `a button for {id}`)
+  node.props.onClick()
+end
+
 local function claudeAccount(host)
   local report = host.globals.noctalia.state.get("report")
   return report.providers[1].accounts[1]
@@ -179,6 +188,8 @@ t.group("analytics", function()
     t.eq(#env.ofType(host.barTree, "image"), 0, "no ring: there is no limit to show")
     local panel = env.start(host, "panel.luau")
     panel.call("onOpen", "")
+    t.contains(env.texts(host.panelTree), "Tokens per hour", "opens on the Overview")
+    pick(host, "opencode")
     t.contains(env.texts(host.panelTree), "opencode")
     t.contains(env.texts(host.panelTree), "Token usage")
   end)
@@ -227,9 +238,11 @@ t.group("analytics", function()
     local host = running()
     local panel = env.start(host, "panel.luau")
     panel.call("onOpen", "")
+    pick(host, "claude")
     local texts = env.texts(host.panelTree)
     t.contains(texts, "Token usage")
     t.contains(texts, "This 5-hour session")
+    t.contains(texts, "Last 24 hours")
     t.contains(texts, "2.3M") -- In
     t.contains(texts, "970k") -- Out
     t.contains(texts, "In")

@@ -28,7 +28,7 @@ local addDraft = ""
 local renaming: string? = nil -- account whose name is being edited
 local renameDraft = ""
 local analyticsOpen = true -- the token sections; kept across opens
-local selected: string? = nil -- provider whose card shows, or "overview"; kept across opens
+local selected: string? = nil -- provider whose card shows, or "overview"; "overview" on every open
 local overviewRange = "24h" -- the Overview tab's range ("24h" | "7d")
 local confirming: { key: string, untilAt: number }? = nil
 local copied: { key: string, untilAt: number }? = nil
@@ -283,6 +283,7 @@ local OPEN_FRESHNESS = 120
 
 function onOpen(_context)
   isOpen = true
+  selected = "overview" -- opens on the Overview (the first provider when it has nothing to show)
   report = noctalia.state.get(state.REPORT)
   panel.setWantsSecondTicks(true)
   render()

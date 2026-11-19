@@ -182,6 +182,7 @@ local CHART_HEIGHT = 44
 local PERIODS = {
   { key = "session", label = "analytics.session" },
   { key = "today", label = "analytics.today" },
+  { key = "day", label = "analytics.day" },
   { key = "week", label = "analytics.week" },
   { key = "month", label = "analytics.month" },
 }
