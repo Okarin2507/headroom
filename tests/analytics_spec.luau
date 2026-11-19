@@ -241,7 +241,7 @@ t.group("analytics", function()
     t.eq(claudeAccount(broken).status, "ok")
   end)
 
-  t.test("the panel shows the periods, the chart and the models; they can be collapsed", function()
+  t.test("the panel shows the periods, the chart and the models", function()
     local host = running()
     local panel = env.start(host, "panel.luau")
     panel.call("onOpen", "")
@@ -259,20 +259,6 @@ t.group("analytics", function()
     end
     t.contains(texts, "Opus 5.5")
     t.contains(texts, "Thu")
-
-    local toggle
-    for _, button in env.ofType(host.panelTree, "button") do
-      if button.props.glyph == "chevron-up" then
-        toggle = button
-      end
-    end
-    t.ok(toggle ~= nil, "a collapse button")
-    toggle.props.onClick()
-    local collapsed = env.texts(host.panelTree)
-    t.contains(collapsed, "Token usage")
-    for _, text in collapsed do
-      t.ok(text ~= "This 5-hour session", "section is collapsed")
-    end
   end)
 
   t.test("the bar tooltip gives the session's tokens", function()

@@ -27,7 +27,6 @@ local adding: string? = nil -- provider whose add form is open
 local addDraft = ""
 local renaming: string? = nil -- account whose name is being edited
 local renameDraft = ""
-local analyticsOpen = true -- the token sections; kept across opens
 local selected: string? = nil -- provider whose card shows, or "overview"; "overview" on every open
 local overviewRange = "24h" -- the Overview tab's range ("24h" | "7d")
 local confirming: { key: string, untilAt: number }? = nil
@@ -71,10 +70,6 @@ local cardOptions = {
   end,
   onOverviewRange = function(key: string)
     overviewRange = key
-    render()
-  end,
-  onToggleAnalytics = function()
-    analyticsOpen = not analyticsOpen
     render()
   end,
   onAddOpen = function(id: string)
@@ -149,7 +144,6 @@ function render()
   lastRenderAt = now
   cardOptions.adding = adding
   cardOptions.renaming = renaming
-  cardOptions.analyticsOpen = analyticsOpen
   cardOptions.overviewRange = overviewRange
   cardOptions.confirmingRemove = if confirming and now < confirming.untilAt then confirming.key else nil
   cardOptions.copied = if copied and now < copied.untilAt then copied.key else nil

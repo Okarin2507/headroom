@@ -28,7 +28,6 @@ local SIGN_IN_ERRORS = { not_configured = true, expired = true, auth = true }
 --   renaming: string?       key of the account whose name is being edited
 --   onRenameOpen(key), onRenameCancel(), onRenameChange(text), onRenameSubmit(key)
 --   confirmingRemove: string?, copied: string?   account keys
---   analyticsOpen: boolean?, onToggleAnalytics()   the token section; open unless false
 export type Options = { [string]: any }
 
 function M.logo(provider, size: number, opacity: number?)
@@ -300,34 +299,19 @@ local function modelRows(report)
 end
 
 -- The account's token counts: this session, today, 7 and 30 days, the last
--- seven days as bars and the models behind them. Collapsible, since the usage
--- meters above are what most glances are for.
-local function analyticsBlock(account, options)
+-- seven days as bars and the models behind them.
+local function analyticsBlock(account)
   local report = account.analytics
-  local open = options.analyticsOpen ~= false
   local children = {
-    ui.row({ align = "center", gap = 6 }, {
-      ui.label({ text = noctalia.tr("analytics.title"), fontSize = 12, fontWeight = "semibold", color = "on_surface", flexGrow = 1 }),
-      ui.button({
-        glyph = if open then "chevron-up" else "chevron-down",
-        variant = "ghost",
-        controlSize = "sm",
-        tooltip = noctalia.tr(if open then "analytics.collapse" else "analytics.expand"),
-        onClick = function()
-          options.onToggleAnalytics()
-        end,
-      }),
-    }),
+    ui.label({ text = noctalia.tr("analytics.title"), fontSize = 12, fontWeight = "semibold", color = "on_surface" }),
   }
-  if open then
-    if report.periods.month.messages == 0 then
-      table.insert(children, M.caption(noctalia.tr("analytics.none"), nil, { maxLines = 2 }))
-    else
-      table.insert(children, periodRows(report))
-      table.insert(children, dayChart(report.days))
-      table.insert(children, modelRows(report))
-      table.insert(children, M.caption(noctalia.tr("analytics.footnote"), "on_surface_variant/0.8", { fontSize = 10, maxLines = 3 }))
-    end
+  if report.periods.month.messages == 0 then
+    table.insert(children, M.caption(noctalia.tr("analytics.none"), nil, { maxLines = 2 }))
+  else
+    table.insert(children, periodRows(report))
+    table.insert(children, dayChart(report.days))
+    table.insert(children, modelRows(report))
+    table.insert(children, M.caption(noctalia.tr("analytics.footnote"), "on_surface_variant/0.8", { fontSize = 10, maxLines = 3 }))
   end
   return ui.column({ key = `analytics-{account.key}`, gap = 14 }, children)
 end
@@ -356,7 +340,7 @@ local function accountBody(account, now: number, options): { any }
   end
   if account.analytics then
     table.insert(body, ui.separator({ color = "outline/0.25" }))
-    table.insert(body, analyticsBlock(account, options))
+    table.insert(body, analyticsBlock(account))
   end
   return body
 end

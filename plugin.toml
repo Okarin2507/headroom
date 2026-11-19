@@ -199,6 +199,6 @@ width = 480
 height = 720
 placement = "attached"
 position = "auto"
-open_near_click = false
+open_near_click = true
 dismiss_on_outside_click = true
 capture_keys = ["escape", "r"]
