@@ -157,13 +157,13 @@ end)
 
 -- Presses a provider's button at the top right of the panel.
 local function switchTo(host, name)
-  for _, n in env.ofType(host.panelTree, "button") do
-    if n.props.tooltip == name and n.props.key ~= nil then
-      n.props.onClick()
-      return env.texts(host.panelTree)
-    end
-  end
-  error(`no switch for {name}`)
+  local node = env.find(host.panelTree, function(n)
+    return n.props.tooltip == name and tostring(n.props.key):find("switch-", 1, true) ~= nil
+  end)[1]
+  t.ok(node ~= nil, `a switch for {name}`)
+  t.ok(#env.ofType(node, "image") + #env.ofType(node, "glyph") > 0, "it shows the provider's logo")
+  node.props.onClick()
+  return env.texts(host.panelTree)
 end
 
 t.group("panel", function()
@@ -187,9 +187,10 @@ t.group("panel", function()
   t.test("a single connected provider needs no switch", function()
     local host = running({ config = { provider_antigravity = "off" } })
     openPanel(host)
-    for _, n in env.ofType(host.panelTree, "button") do
-      t.ok(n.props.key == nil or not tostring(n.props.key):find("switch-", 1, true), "no switch button")
-    end
+    local switches = env.find(host.panelTree, function(n)
+      return tostring(n.props.key):find("switch-", 1, true) ~= nil
+    end)
+    t.eq(#switches, 0, "no switch")
   end)
 
   t.test("a card shows who is signed in and has its own refresh button", function()

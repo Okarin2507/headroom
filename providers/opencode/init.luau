@@ -141,7 +141,7 @@ return provider.define({
   name = "opencode",
   brand = {
     logo = "providers/opencode/logo.svg",
-    tint = "#8a8f98",
+    tint = "on_surface",
     glyph = "terminal-2",
   },
 

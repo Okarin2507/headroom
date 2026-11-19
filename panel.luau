@@ -184,16 +184,20 @@ function render()
   if #connected > 1 then
     for _, provider in connected do
       local id = provider.id
-      table.insert(switch, ui.button({
+      local active = current ~= nil and id == current.id
+      table.insert(switch, ui.row({
         key = `switch-{id}`,
-        glyph = provider.brand.glyph,
-        variant = if current and id == current.id then "primary" else "ghost",
-        controlSize = "sm",
+        padding = 6,
+        radius = 8,
+        align = "center",
+        fill = if active then "primary/0.22" else nil,
         tooltip = provider.name,
         onClick = function()
           selected = id
           render()
         end,
+      }, {
+        cards.logo(provider, 16, if active then 1 else 0.6),
       }))
     end
   end
