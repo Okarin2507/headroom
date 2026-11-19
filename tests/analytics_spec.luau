@@ -155,8 +155,14 @@ t.group("analytics", function()
     end
     t.eq(opencode.status, "ok")
     t.eq(opencode.analytics.periods.session.input, 2300000)
-    t.eq(host.analyticsRuns[1][5], "opencode")
-    t.eq(host.analyticsRuns[1][7], "/home/test/.local/share/opencode")
+    local run
+    for _, argv in host.analyticsRuns do
+      if argv[5] == "opencode" then
+        run = argv
+      end
+    end
+    t.ok(run ~= nil, "the analytics program ran for opencode")
+    t.eq(run[7], "/home/test/.local/share/opencode")
     env.start(host, "bar.luau")
     t.eq(#env.ofType(host.barTree, "image"), 0, "no ring: there is no limit to show")
     local panel = env.start(host, "panel.luau")

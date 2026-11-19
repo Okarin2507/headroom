@@ -97,8 +97,10 @@ provider (Antigravity's included), and a single-account card names who is signed
 Under each account's meters, the **Token usage** section adds up the tokens you've actually spent, from files the CLIs
 already keep on this computer: Claude Code's transcripts (`<config folder>/projects/**/*.jsonl`) and Antigravity's
 conversation databases (`~/.gemini/antigravity*/conversations/*.db`), and opencode's database
-(`$XDG_DATA_HOME/opencode/opencode.db`, else `~/.local/share/opencode/opencode.db`). opencode has no plan limits, so its
-card shows token usage only (In is input plus cache writes, Out is output plus reasoning) and it stays off the bar. Nothing is sent anywhere, and nothing is written.
+(`$XDG_DATA_HOME/opencode/opencode.db`, else `~/.local/share/opencode/opencode.db`; In is input plus cache writes, Out is
+output plus reasoning). Signed in to an OpenCode account with a **Go** plan, the opencode card also shows the plan's 5-hour,
+weekly and monthly spend limits, as percentages with reset times and the dollars spent. Without a Go plan it shows token
+usage only. It stays off the bar unless you set `provider_opencode` to `bar`. Nothing is sent anywhere, and nothing is written.
 
 - **Periods.** This 5-hour session (counted from the window's own start, so it lines up with the session meter),
   today, the last 7 days and the last 30 days.
@@ -223,6 +225,9 @@ noctalia msg plugin okarin/headroom:poller all refresh
     such as a locked keyring, Headroom waits 30 minutes before asking again, so it can't keep raising unlock prompts.
   - `env AGY_CLI_DISABLE_AUTO_UPDATE=true agy models`, when the Antigravity session has expired, at most every 10
     minutes. agy renews its own session.
+  - `python3 -I -c <script> <opencode folder>`, to read the access token of your OpenCode login from opencode's database
+    (read-only; the token stays in memory, is reused for 10 minutes and is sent only to `opencode.ai`). Plus
+    `GET https://opencode.ai/console/api/go/status` for the Go plan's limits. Headroom never renews that login.
 - **The endpoints are undocumented** and can change without notice. If a card says *Unexpected response*, please
   [open an issue](https://github.com/ayagmar/headroom/issues).
 - **Source and issues** live at [github.com/ayagmar/headroom](https://github.com/ayagmar/headroom), along with the

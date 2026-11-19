@@ -357,6 +357,66 @@ t.group("opencode", function()
     t.eq(#host.spawned, 0)
   end)
 
+  -- python3 answers the credential read with `login`; the status endpoint with `status`.
+  local function goSetup(login, status)
+    local host, p, ctx = env.provider("opencode")
+    host.files[DB] = "x"
+    host.commands["python3"] = true
+    host.runHandler = function(argv)
+      if argv[1] == "python3" then
+        return { exitCode = 0, stdout = login }
+      end
+      return nil
+    end
+    env.serve(host, { ["opencode.ai/console/api/go/status"] = status })
+    return host, p, ctx
+  end
+  local function login(expiresMs)
+    return `\{"access":"oc-access","expires":{expiresMs},"email":"me@example.com"}`
+  end
+  local NOW_MS = 1790000000000 -- host clock is 2026-09-21T14:13:20Z, i.e. 1790000000
+
+  t.test("the Go plan's meters become session, weekly and monthly windows", function()
+    local host, p, ctx = goSetup(login(NOW_MS + 86400000), env.fixture("opencode_go_status.json"))
+    local snap, err = fetch(p, ctx)
+    t.eq(err, nil)
+    t.eq(snap.plan, "Go")
+    t.eq(snap.email, "me@example.com")
+    t.eq(#snap.windows, 3)
+    t.eq(snap.windows[1].kind, "session")
+    t.near(snap.windows[1].usedPercent, 13.67, 0.01)
+    t.eq(snap.windows[2].kind, "weekly")
+    t.near(snap.windows[3].usedPercent, 64.57, 0.01)
+    t.eq(snap.windows[1].resetsAt, 1790002800)
+    t.eq(snap.notes[1].value, "$1.64 of $12.00")
+    t.eq(env.headerOf(host.requests[1], "Authorization"), "Bearer oc-access")
+    t.eq(host.requests[1].method, "GET")
+  end)
+
+  t.test("the login is read once, then reused", function()
+    local host, p, ctx = goSetup(login(NOW_MS + 86400000), env.fixture("opencode_go_status.json"))
+    fetch(p, ctx)
+    fetch(p, ctx)
+    t.eq(#host.spawned, 1)
+    t.eq(#host.requests, 2)
+  end)
+
+  t.test("without a login, a Go plan or python3 the card shows tokens only", function()
+    local _, p, ctx = goSetup("{}", env.fixture("opencode_go_status.json"))
+    t.eq(#fetch(p, ctx).windows, 0)
+    local host2, p2, ctx2 = goSetup(login(NOW_MS + 86400000), { ok = true, status = 403, body = "" })
+    t.eq(#fetch(p2, ctx2).windows, 0)
+    host2.commands["python3"] = false
+    local _, p3, ctx3 = goSetup(login(NOW_MS + 86400000), "{}")
+    t.eq(#fetch(p3, ctx3).windows, 0, "a document without meters")
+  end)
+
+  t.test("an expired login is reported, not renewed", function()
+    local host, p, ctx = goSetup(login(NOW_MS - 1000), env.fixture("opencode_go_status.json"))
+    t.eq(select(2, fetch(p, ctx)).code, "expired")
+    t.eq(#host.requests, 0)
+  end)
+
   t.test("the token counts are read from XDG_DATA_HOME when set", function()
     local host, p, ctx = env.provider("opencode")
     t.eq(p.analytics.source, "opencode")

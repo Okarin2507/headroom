@@ -100,7 +100,8 @@
   "note": {
     "extra_usage": "Extra usage",
     "of": "{used} of {limit}",
-    "on": "On"
+    "on": "On",
+    "spend": "{window} spend"
   },
   "notify": {
     "body": "{window} is at {percent}%.",
@@ -239,6 +240,7 @@
     "tokens_value": "In {input} · Out {output} this session"
   },
   "window": {
+    "monthly": "Monthly",
     "other": "Limit",
     "session": "Session",
     "weekly": "Weekly",
