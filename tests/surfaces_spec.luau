@@ -256,12 +256,12 @@ t.group("panel", function()
     t.contains(texts, "Antigravity · not connected")
   end)
 
-  t.test("usage-page links open with xdg-open", function()
+  t.test("a card has no add-account or usage-page buttons", function()
     local host = running()
     openPanel(host)
-    local link = env.find(host.panelTree, function(n) return n.props.glyph == "external-link" end)[1]
-    link.props.onClick()
-    t.eq(table.concat(host.spawned[1], " "), "xdg-open https://claude.ai/settings/usage")
+    for _, glyph in { "user-plus", "external-link" } do
+      t.eq(#env.find(host.panelTree, function(n) return n.props.glyph == glyph end), 0, glyph)
+    end
   end)
 
   t.test("opening fetches data that is old enough, once", function()
@@ -370,20 +370,6 @@ t.group("accounts", function()
     openPanel(host)
     button(host.panelTree, function(p) return p.glyph == "terminal-2" end).props.onClick()
     t.eq(host.clipboard, "CLAUDE_CONFIG_DIR='/home/test/.claude-work' claude")
-  end)
-
-  t.test("adding from the panel: name it, sign in, and it appears waiting for the sign-in", function()
-    local host = twoClaudeAccounts()
-    openPanel(host)
-    button(host.panelTree, function(p) return p.glyph == "user-plus" end).props.onClick()
-    local input = env.ofType(host.panelTree, "input")[1]
-    input.props.onChange("Side")
-    button(host.panelTree, function(p) return p.text == "Sign in" and p.variant == "primary" end).props.onClick()
-    t.eq(#host.terminals, 1)
-    local texts = env.texts(host.panelTree)
-    t.contains(texts, "Side")
-    t.contains(texts, "Waiting for sign-in…")
-    t.eq(#env.ofType(host.panelTree, "input"), 0, "form closed")
   end)
 
   t.test("a provider that isn't signed in offers the sign-in", function()

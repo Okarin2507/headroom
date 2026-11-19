@@ -2,7 +2,6 @@
   "accounts": {
     "add_help": "{provider}'s own sign-in opens in a terminal. To add an account other than the one your browser is signed in to, open the sign-in link in a private window.",
     "add_title": "Add a {provider} account",
-    "add_tooltip": "Add a {provider} account",
     "cancel": "Cancel",
     "copied": "Copied",
     "copy_tooltip": "Copy the command that starts {provider} as this account",
@@ -137,7 +136,6 @@
     "empty_title": "No signed-in providers",
     "not_connected": "{provider} · not connected",
     "not_refreshed": "Not refreshed yet",
-    "open_dashboard": "Open {provider} usage page",
     "refresh_provider_tooltip": "Refresh {provider} now",
     "refresh_tooltip": "Refresh now (R)",
     "remaining_tooltip": "{percent}% of this window remains",

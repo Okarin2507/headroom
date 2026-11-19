@@ -20,7 +20,7 @@ description = "How much of your Claude and Antigravity plan limits is left, per 
 tags = ["bar", "panel", "service", "ai", "indicator", "productivity"]
 # All optional: each powers one feature listed in the README's Requirements,
 # and that feature is skipped when the tool is missing.
-dependencies = ["xdg-open", "secret-tool", "claude", "agy", "env", "rm", "python3"]
+dependencies = ["secret-tool", "claude", "agy", "env", "rm", "python3"]
 
 # ── Settings ────────────────────────────────────────────────────────────────
 # One page, read top to bottom in groups whose labels carry the group name

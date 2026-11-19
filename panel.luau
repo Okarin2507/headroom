@@ -34,17 +34,7 @@ local copied: { key: string, untilAt: number }? = nil
 
 local render
 
--- The vendor's own usage page, one click from its card. xdg-open runs as an
--- argv (no shell), and the URL is a constant from the provider's brand.
-local canOpenUrls = noctalia.commandExists("xdg-open")
-
 local cardOptions = {
-  onOpenDashboard = if canOpenUrls
-    then function(url: string)
-      noctalia.runAsync({ "xdg-open", url })
-      panel.close()
-    end
-    else nil,
   onRefresh = function()
     state.requestRefresh()
   end,

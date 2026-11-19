@@ -38,7 +38,6 @@ Sign in to at least one of these. Headroom picks up each one on its own; there i
 Optional tools, all declared in `dependencies`. Each one only powers the feature below, and when it's missing that
 feature is skipped:
 
-- `xdg-open` opens a provider's usage page from the panel. Without it, those buttons are hidden.
 - `secret-tool` (from libsecret) reads Antigravity's keyring session. Without it, only the token file is read.
 - `claude` (Claude Code) renews an expired Claude session and signs in Claude accounts from the panel. Without it,
   the card asks you to sign in again and accounts can't be added.
@@ -84,7 +83,6 @@ connected, a button per provider at the top right of the panel switches between 
 - **Forecast.** Your usage so far, extrapolated to the reset: `≈ 59% by reset` if the window will last,
   `Runs out in 26m` if it won't. It waits until 15% of the window has passed, so one busy morning doesn't predict the
   whole week.
-- **Usage page.** The link button on each card opens the provider's own usage page.
 - **Extras.** Extra usage appears under the windows when your plan has them.
 - **Problems.** An expired session, a rejected sign-in or a network failure is explained on the card, with what to
   do about it. The last numbers stay visible, marked as cached.
@@ -134,10 +132,8 @@ Claude Code keeps its sign-in in a config folder (`~/.claude`), and you can poin
 With more than one account, the card gives each its own section with its meters. Hover a name to see its email and
 folder.
 
-- **Add an account.** Click the person button on a Claude card, give the account a name, and click
-  **Sign in**. A terminal opens with the CLI's own sign-in (`claude auth login`) for a new folder that
-  Headroom keeps for that account. If your browser is already signed in to another account, open the sign-in link in a
-  private window. The account appears as soon as the sign-in finishes.
+- **Add an account.** This fork has no add-account button; extra Claude accounts are found from their `~/.claude-*` folders
+  (or `CLAUDE_CONFIG_DIR`) as before.
 - **Use an account.** The terminal button copies the command that starts the CLI as that account, such as
   `CLAUDE_CONFIG_DIR='…' claude`.
 - **Rename an account.** Click the pencil next to its name. The name belongs to the account, not the folder: if you
@@ -220,7 +216,6 @@ noctalia msg plugin okarin/headroom:poller all refresh
   - `accounts/<provider>/<name>/`: one empty folder per added account, which the CLI then signs in to.
   - `icons/` and `rings/`: small SVGs tinted for your theme.
 - **Processes.** Each runs from an argument list, never through a shell, except the sign-in noted below:
-  - `xdg-open <usage page URL>`, when you click a card's link button.
   - `claude -p /status --no-session-persistence`, when the Claude session has expired, at most every 10 minutes per
     account. Claude Code renews its own session. No model call is made, no quota is used and no transcript is kept.
     For an added account it runs as `env CLAUDE_CONFIG_DIR=<its folder> claude …`.

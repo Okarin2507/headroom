@@ -19,7 +19,6 @@ local TRACK = "on_surface/0.10"
 local SIGN_IN_ERRORS = { not_configured = true, expired = true, auth = true }
 
 -- Panel options:
---   onOpenDashboard(url)?   shows the usage-page button when given
 --   onRefresh()
 --   onRefreshProvider(id)   fetches that provider's accounts now (button in its card)
 --   onSignIn(key), onRemove(key), onCopy(key, text)
@@ -531,29 +530,6 @@ function M.providerCard(provider, now: number, options: Options)
       end,
     }))
   end
-  if provider.canAdd and options.adding ~= provider.id then
-    table.insert(headerChildren, ui.button({
-      glyph = "user-plus",
-      variant = "ghost",
-      controlSize = "sm",
-      tooltip = noctalia.tr("accounts.add_tooltip", { provider = provider.name }),
-      onClick = function()
-        options.onAddOpen(provider.id)
-      end,
-    }))
-  end
-  if provider.brand.dashboard and options.onOpenDashboard then
-    table.insert(headerChildren, ui.button({
-      glyph = "external-link",
-      variant = "ghost",
-      controlSize = "sm",
-      tooltip = noctalia.tr("panel.open_dashboard", { provider = provider.name }),
-      onClick = function()
-        options.onOpenDashboard(provider.brand.dashboard)
-      end,
-    }))
-  end
-
   local body = { ui.row({ align = "center", gap = 10 }, headerChildren) }
   if options.adding == provider.id then
     table.insert(body, addForm(provider, options))
