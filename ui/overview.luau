@@ -196,13 +196,12 @@ local function chart(data)
         table.insert(segments, ui.box({
           width = barWidth,
           height = math.max(2, math.floor(part / peak * CHART_HEIGHT + 0.5)),
-          radius = 2,
           fill = row.provider.brand.tint,
         }))
       end
     end
     if #segments == 0 then
-      table.insert(segments, ui.box({ width = barWidth, height = 2, radius = 1, fill = "on_surface/0.10" }))
+      table.insert(segments, ui.box({ width = barWidth, height = 2, fill = "on_surface/0.10" }))
     end
     -- Per-day names fit under their bars; 24 hours get one axis line instead.
     local children = { ui.column({ align = "center", justify = "end" }, segments) }
