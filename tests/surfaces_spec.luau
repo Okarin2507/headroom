@@ -264,11 +264,11 @@ t.group("panel", function()
     t.eq(table.concat(host.spawned[1], " "), "xdg-open https://claude.ai/settings/usage")
   end)
 
-  t.test("opening fetches data older than 2 minutes, once", function()
+  t.test("opening fetches data that is old enough, once", function()
     local host = running()
     local panel = openPanel(host)
     local before = #host.requests
-    host.clock += 120
+    host.clock += 601 -- Claude is not asked sooner than every 10 minutes
     panel.call("onClose")
     panel.call("onOpen", "")
     panel.call("onClose")

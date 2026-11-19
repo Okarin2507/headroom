@@ -71,6 +71,9 @@ export type Provider = {
   fetch: (ctx: Context, done: (model.Snapshot?, model.ProviderError?) -> ()) -> (),
   -- How to fix a not_configured / expired / auth state, already translated.
   signInHint: (ctx: Context) -> string,
+  -- Optional: never fetch more often than this, whatever `refresh_minutes` says
+  -- (an endpoint that throttles hard).
+  minRefreshSeconds: number?,
   -- Optional: several accounts, one per config folder.
   accounts: Accounts?,
   -- Optional: where the CLI keeps its local token counts, for lib/analytics.luau.

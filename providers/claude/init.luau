@@ -188,6 +188,10 @@ return provider.define({
     dashboard = "https://claude.ai/settings/usage",
   },
 
+  -- The usage endpoint answers 429 to anyone who asks too often, and keeps
+  -- answering it for a long while: ten minutes between fetches is plenty.
+  minRefreshSeconds = 600,
+
   accounts = {
     env = "CLAUDE_CONFIG_DIR",
     default = "~/.claude",

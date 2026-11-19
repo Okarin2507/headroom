@@ -86,8 +86,12 @@ local function isOff(id: string): boolean
   return state.providerMode(id) == "off"
 end
 
-local function intervalSeconds(): number
-  return math.clamp(state.config("refresh_minutes", 5), 1, 120) * 60
+-- Seconds between fetches: the setting, but never below the provider's own
+-- floor (`minRefreshSeconds`): Claude's usage endpoint throttles hard, so asking
+-- more often than every 10 minutes only keeps it throttled.
+local function intervalSeconds(provider): number
+  local configured = math.clamp(state.config("refresh_minutes", 5), 1, 120) * 60
+  return math.max(configured, provider and provider.minRefreshSeconds or 0)
 end
 
 local function analyticsEnabled(): boolean
@@ -124,7 +128,10 @@ local function saveCache()
   end
   for key, rt in runtimes do
     if rt.snapshot then
-      doc.providers[key] = { snapshot = rt.snapshot, notified = rt.notified }
+      -- A throttled account keeps its wait across a restart: a reload must not
+      -- ask the endpoint again straight away.
+      local throttled = rt.error ~= nil and rt.error.code == E.RateLimited
+      doc.providers[key] = { snapshot = rt.snapshot, notified = rt.notified, retryAt = if throttled then rt.schedule.nextAt else nil }
     end
   end
   local text = noctalia.json.encode(doc)
@@ -213,7 +220,10 @@ local function newRuntime(p, account: accounts.Account): Runtime
     -- out the rest of its interval instead of fetching it again.
     local fetchedAt = entry.snapshot.fetchedAt
     if type(fetchedAt) == "number" then
-      rt.schedule.nextAt = math.min(fetchedAt, base.now()) + intervalSeconds()
+      rt.schedule.nextAt = math.min(fetchedAt, base.now()) + intervalSeconds(p)
+    end
+    if type(entry.retryAt) == "number" and entry.retryAt > rt.schedule.nextAt then
+      rt.schedule.nextAt = entry.retryAt
     end
   end
   return rt
@@ -398,13 +408,16 @@ local function fetchAccount(rt: Runtime, now: number)
   local generation = scheduler.start(rt.schedule, now)
   local ok, thrown = pcall(p.fetch, rt.ctx, function(snapshot, err)
     local finishedAt = base.now()
-    if not scheduler.finish(rt.schedule, generation, finishedAt, intervalSeconds(), err) then
+    if not scheduler.finish(rt.schedule, generation, finishedAt, intervalSeconds(p), err) then
       return -- superseded by a newer request
     end
     lastRefreshAt = finishedAt
     if err then
       rt.error = withHint(rt, err)
       rt.stale = rt.snapshot ~= nil
+      if err.code == E.RateLimited then
+        saveCache() -- remembers the wait
+      end
       noctalia.log(`[headroom] {rt.account.key}: {err.code}{if err.detail then " (" .. err.detail .. ")" else ""}`)
     else
       local previous = rt.snapshot
@@ -420,7 +433,7 @@ local function fetchAccount(rt: Runtime, now: number)
     -- A bug in an adapter must not take the other accounts down with it.
     noctalia.log(`[headroom] {rt.account.key}: adapter error: {thrown}`)
     rt.error = model.err(E.Parse, "adapter error")
-    scheduler.finish(rt.schedule, generation, base.now(), intervalSeconds(), rt.error)
+    scheduler.finish(rt.schedule, generation, base.now(), intervalSeconds(p), rt.error)
   end
 end
 
@@ -527,7 +540,7 @@ local function refresh(maxAge: number?, providerId: string?)
     local throttled = rt.error ~= nil and rt.error.code == E.RateLimited and not scheduler.isDue(rt.schedule, now)
     local wanted = if maxAge == nil
       then not throttled
-      else rt.error == nil and (rt.stale or rt.snapshot == nil or now - (rt.snapshot.fetchedAt or 0) >= maxAge)
+      else rt.error == nil and (rt.stale or rt.snapshot == nil or now - (rt.snapshot.fetchedAt or 0) >= math.max(maxAge, rt.provider.minRefreshSeconds or 0))
     if wanted then
       scheduler.force(rt.schedule, now)
     end
@@ -661,7 +674,7 @@ function onConfigChanged()
   local now = base.now()
   eachListed(function(rt)
     if rt.error == nil and rt.snapshot ~= nil then
-      rt.schedule.nextAt = math.min(rt.schedule.nextAt, now + intervalSeconds())
+      rt.schedule.nextAt = math.min(rt.schedule.nextAt, now + intervalSeconds(rt.provider))
     end
   end)
   publish()

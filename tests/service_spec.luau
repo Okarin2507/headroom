@@ -39,12 +39,24 @@ t.group("service", function()
 
   t.test("refetches when due, on the configured interval", function()
     local host = signedInClaude()
-    host.config.refresh_minutes = 2
+    host.config.refresh_minutes = 15
     local svc = env.start(host, "service.luau")
-    host.clock += 60
+    host.clock += 600
     svc.call("update")
     t.eq(#host.requests, 1)
-    host.clock += 61
+    host.clock += 301
+    svc.call("update")
+    t.eq(#host.requests, 2)
+  end)
+
+  t.test("Claude is never fetched more often than every 10 minutes, whatever the setting", function()
+    local host = signedInClaude()
+    host.config.refresh_minutes = 1
+    local svc = env.start(host, "service.luau")
+    host.clock += 300
+    svc.call("update")
+    t.eq(#host.requests, 1, "five minutes in: too soon")
+    host.clock += 301
     svc.call("update")
     t.eq(#host.requests, 2)
   end)
@@ -91,7 +103,7 @@ t.group("service", function()
     local host = signedInClaude()
     local svc = env.start(host, "service.luau")
     env.serve(host, { ["api.anthropic.com"] = { ok = true, status = 503, body = "" } })
-    host.clock += 300
+    host.clock += 601
     svc.call("update")
     local claude = account(host, "claude")
     t.eq(claude.status, "error")
@@ -108,7 +120,7 @@ t.group("service", function()
     local state = host.globals.noctalia.state
     state.set("command", { action = "refresh", maxAge = 30 })
     t.eq(#host.requests, 1, "fresh data: nothing to do")
-    host.clock += 120
+    host.clock += 601
     state.set("command", { action = "refresh", maxAge = 30 })
     t.eq(#host.requests, 2, "old data: refetched")
 
@@ -142,7 +154,7 @@ t.group("service", function()
     t.eq(claude.status, "ok")
     t.eq(claude.stale, true)
     t.eq(#restarted.requests, 0, "data from a minute ago is not fetched again")
-    restarted.clock += 240
+    restarted.clock += 541
     svc.call("update")
     t.eq(#restarted.requests, 1, "fetched once its interval is over")
   end)
@@ -156,18 +168,33 @@ t.group("service", function()
     host.clock += 60
     svc.call("onIpc", "refresh")
     t.eq(#host.requests, 2, "still throttled: not asked again")
-    host.clock += 240
+    host.clock += 560
     svc.call("onIpc", "refresh")
     t.eq(#host.requests, 3, "the wait is over")
+  end)
+
+  t.test("a throttled account keeps its wait through a restart", function()
+    local host = signedInClaude()
+    local svc = env.start(host, "service.luau")
+    env.serve(host, { ["api.anthropic.com"] = { ok = true, status = 429, body = "" } })
+    svc.call("onIpc", "refresh")
+    local restarted = signedInClaude()
+    restarted.files["/data/cache.json"] = host.files["/data/cache.json"]
+    restarted.clock = host.clock + 300
+    local again = env.start(restarted, "service.luau")
+    t.eq(#restarted.requests, 0, "reloading the plugin does not ask a throttled endpoint again")
+    restarted.clock += 400
+    again.call("update")
+    t.eq(#restarted.requests, 1, "asked once the wait is over")
   end)
 
   t.test("notifies once when crossing the critical threshold", function()
     local host = signedInClaude()
     local svc = env.start(host, "service.luau")
     env.serve(host, { ["api.anthropic.com"] = env.claudeBody(host, 93) })
-    host.clock += 300
+    host.clock += 601
     svc.call("update")
-    host.clock += 300
+    host.clock += 601
     svc.call("update")
     t.eq(#host.notifications, 1)
     t.eq(host.notifications[1].title, "Claude usage is running low")

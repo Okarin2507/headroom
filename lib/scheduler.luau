@@ -52,7 +52,7 @@ function M.retryDelay(code: string, failures: number, interval: number): number
     -- Plans change rarely; check hourly in case the user upgrades.
     return math.max(interval, 3600)
   elseif code == E.RateLimited then
-    return math.min(math.max(interval, 300 * step), 3600)
+    return math.min(math.max(interval, 600 * step), 3600)
   end
   return math.min(30 * step, interval)
 end

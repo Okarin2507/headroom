@@ -177,7 +177,7 @@ Everything is on one page: Settings → Plugins → Headroom, or middle-click th
 | `critical_percent` | `int` | `90` | Usage at or above this turns red and can send a notification. |
 | `notify` | `bool` | `true` | Notifies once when a window crosses `critical_percent`, and again when it resets. |
 | `analytics` | `bool` | `true` | Shows token usage (needs `python3`). Collected at most every 2 minutes. |
-| `refresh_minutes` | `int` | `5` | Minutes between fetches for each provider (1–120). Failed fetches retry sooner; throttled ones wait longer. |
+| `refresh_minutes` | `int` | `5` | Minutes between fetches for each provider (1–120). Claude is never fetched more often than every 10 minutes: its usage endpoint throttles hard. Failed fetches retry sooner; throttled ones wait longer (10 minutes at first, up to an hour), and that wait survives a plugin reload. |
 
 Healthy meters use your theme's primary color, so amber and red always stand out. Logos keep their brand colors.
 
