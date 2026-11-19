@@ -96,7 +96,7 @@ provider (Antigravity's included), and a single-account card names who is signed
 ### Overview
 
 The panel opens on **Overview** (the first button at the top right): every provider's token usage added up, over the last
-24 hours or the last 7 days (switch at its top). It shows the total and responses, each provider's share, a chart stacked by
+24 hours, 7 days or 30 days (switch at its top). It shows the total and responses, each provider's share, a chart stacked by
 provider (per hour, or per day), the In / Out split, and a breakdown by model. It appears once any provider has token counts,
 so it needs `python3` and the `analytics` setting like the sections below.
 

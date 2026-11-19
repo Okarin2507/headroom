@@ -215,6 +215,13 @@ t.group("analytics", function()
     texts = env.texts(host.panelTree)
     t.contains(texts, "Tokens per day")
     t.contains(texts, "13M") -- 9.0M In + 3.969M Out over 7 days
+    local month = env.find(host.panelTree, function(n)
+      return n.props.key == "range-30d"
+    end)[1]
+    month.props.onClick()
+    texts = env.texts(host.panelTree)
+    t.contains(texts, "Tokens per day")
+    t.contains(texts, "13M") -- the same totals over 30 days
   end)
 
   t.test("the token analytics setting turns it off", function()

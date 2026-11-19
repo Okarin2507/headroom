@@ -230,7 +230,10 @@ def main():
     # The last 24 hours, one bucket per clock hour, oldest first; and the models in them.
     this_hour = datetime.datetime.fromtimestamp(now).replace(minute=0, second=0, microsecond=0)
     hour_starts = [(this_hour - datetime.timedelta(hours=n)) for n in range(23, -1, -1)]
-    hours, models_day = [blank() for _ in hour_starts], {}
+    hours, models_day, models_month = [blank() for _ in hour_starts], {}, {}
+    # The last 30 days, one bucket per calendar day, oldest first.
+    month_days = [(local_today - datetime.timedelta(days=n)) for n in range(29, -1, -1)]
+    days30 = [blank() for _ in month_days]
     last = 0
     if not start or start > now:
         start = now - 5 * 3600
@@ -248,6 +251,7 @@ def main():
             add(slot, rec)
         if ts >= today_start:
             add(periods["today"], rec)
+        add(models_month.setdefault(model, blank()), rec)
         if age <= 86400:
             add(periods["day"], rec)
             add(models_day.setdefault(model, blank()), rec)
@@ -259,6 +263,12 @@ def main():
                     break
         if ts >= start:
             add(periods["session"], rec)
+        for idx, day in enumerate(month_days):
+            lo = day.timestamp()
+            hi = month_days[idx + 1].timestamp() if idx < 29 else now + 1
+            if lo <= ts < hi:
+                add(days30[idx], rec)
+                break
         for idx, day in enumerate(day_starts):
             lo = day.timestamp()
             hi = day_starts[idx + 1].timestamp() if idx < 6 else now + 1
@@ -266,9 +276,10 @@ def main():
                 add(days[idx], rec)
                 break
 
-    for p in list(periods.values()) + list(models.values()) + list(models_day.values()) + days + hours:
+    for p in list(periods.values()) + list(models.values()) + list(models_day.values()) + list(models_month.values()) + days + hours + days30:
         p["total"] = p["input"] + p["output"]
     top = sorted(models.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
+    top_month = sorted(models_month.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
     top_day = sorted(models_day.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
     print(
         json.dumps(
@@ -278,6 +289,8 @@ def main():
                 "lastActivity": int(last),
                 "periods": periods,
                 "models": [dict(m, name=n) for n, m in top],
+                "modelsMonth": [dict(m, name=n) for n, m in top_month],
+                "days30": [dict(d, date=month_days[i].strftime("%Y-%m-%d"), weekday=month_days[i].strftime("%a")) for i, d in enumerate(days30)],
                 "modelsDay": [dict(m, name=n) for n, m in top_day],
                 "hours": [dict(h, hour=hour_starts[i].strftime("%H")) for i, h in enumerate(hours)],
                 "days": [dict(d, date=day_starts[i].strftime("%Y-%m-%d"), weekday=day_starts[i].strftime("%a")) for i, d in enumerate(days)],

@@ -20,9 +20,10 @@ local COLUMN = 64
 -- The two ranges the tab can show: the report's period, models and chart for each.
 local RANGES = {
   ["24h"] = { period = "day", models = "modelsDay", series = "hours", label = "overview.range_24h", chart = "overview.hourly" },
+  ["30d"] = { period = "month", models = "modelsMonth", series = "days30", label = "overview.range_30d", chart = "overview.daily" },
   ["7d"] = { period = "week", models = "models", series = "days", label = "overview.range_7d", chart = "overview.daily" },
 }
-M.RANGE_KEYS = { "24h", "7d" }
+M.RANGE_KEYS = { "24h", "7d", "30d" }
 
 local function add(into, from)
   into.input += from.input
@@ -63,7 +64,13 @@ function M.collect(providers, rangeKey: string)
       for i, bucket in report[range.series] do
         local slot = series[i]
         if slot == nil then
-          slot = { label = bucket.hour or bucket.weekday or "", date = bucket.date, total = 0, input = 0, output = 0, parts = {} }
+          slot = {
+            label = bucket.hour or bucket.weekday or "",
+            -- the axis line under a long chart: "14:00" or "11-19"
+            axis = if bucket.hour then `{bucket.hour}:00` else (bucket.date or ""):sub(6),
+            date = bucket.date,
+            total = 0, input = 0, output = 0, parts = {},
+          }
           series[i] = slot
         end
         slot.total += bucket.total
@@ -210,7 +217,7 @@ local function chart(data)
   if count > 12 then
     -- Start, middle and end of the day: "14:00   02:00   now".
     local function at(i: number): string
-      return `{data.series[i].label}:00`
+      return data.series[i].axis
     end
     table.insert(body, ui.row({ align = "center" }, {
       cards.caption(at(1), nil, { fontSize = 10, flexGrow = 1, maxLines = 1 }),

@@ -39,6 +39,8 @@ export type Report = {
   periods: { session: Totals, today: Totals, day: Totals, week: Totals, month: Totals }, -- day = the last 24 hours
   models: { (Totals & { name: string }) }, -- last 7 days, busiest first
   modelsDay: { (Totals & { name: string }) }, -- last 24 hours, busiest first
+  modelsMonth: { (Totals & { name: string }) }, -- last 30 days, busiest first
+  days30: { (Totals & { date: string, weekday: string }) }, -- last 30 days, oldest first
   hours: { (Totals & { hour: string }) }, -- last 24 clock hours, oldest first ("14" = 14:00)
   days: { (Totals & { date: string, weekday: string }) }, -- last 7 days, oldest first
 }
@@ -73,12 +75,20 @@ function M.parse(data: any): Report?
   if type(data) ~= "table" or type(data.periods) ~= "table" then
     return nil
   end
-  local models, modelsDay, days, hours = {}, {}, {}, {}
+  local models, modelsDay, modelsMonth, days, hours, days30 = {}, {}, {}, {}, {}, {}
   for _, model in (if type(data.models) == "table" then data.models else {}) do
     table.insert(models, withField(model, "name", "?"))
   end
   for _, model in (if type(data.modelsDay) == "table" then data.modelsDay else {}) do
     table.insert(modelsDay, withField(model, "name", "?"))
+  end
+  for _, model in (if type(data.modelsMonth) == "table" then data.modelsMonth else {}) do
+    table.insert(modelsMonth, withField(model, "name", "?"))
+  end
+  for _, day in (if type(data.days30) == "table" then data.days30 else {}) do
+    local entry = withField(day, "date", "")
+    entry.weekday = if type(day) == "table" and type(day.weekday) == "string" then day.weekday else ""
+    table.insert(days30, entry)
   end
   for _, hour in (if type(data.hours) == "table" then data.hours else {}) do
     table.insert(hours, withField(hour, "hour", ""))
@@ -102,6 +112,8 @@ function M.parse(data: any): Report?
     },
     models = models,
     modelsDay = modelsDay,
+    modelsMonth = modelsMonth,
+    days30 = days30,
     days = days,
     hours = hours,
   }
