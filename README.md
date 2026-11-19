@@ -74,7 +74,8 @@ Each signed-in provider shows its logo and how much of one window it has used (o
 
 ### Panel
 
-One card per provider, with a meter for every window (Session, Weekly, Weekly · Opus and so on).
+One card at a time, with a meter for every window (Session, Weekly, Weekly · Opus and so on). With more than one provider
+connected, a button per provider at the top right of the panel switches between them.
 
 - **Time track.** The thin line under each meter is time, on the same scale: time elapsed under a "used" meter, time
   left under a "left" one. When the meter runs ahead of the line, you're using the window faster than it allows.

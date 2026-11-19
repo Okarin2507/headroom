@@ -155,19 +155,47 @@ t.group("bar", function()
   end)
 end)
 
+-- Presses a provider's button at the top right of the panel.
+local function switchTo(host, name)
+  for _, n in env.ofType(host.panelTree, "button") do
+    if n.props.tooltip == name and n.props.key ~= nil then
+      n.props.onClick()
+      return env.texts(host.panelTree)
+    end
+  end
+  error(`no switch for {name}`)
+end
+
 t.group("panel", function()
-  t.test("a card per provider with every window", function()
+  t.test("one provider at a time; buttons at the top right switch between them", function()
     local host = running()
     local _, texts = openPanel(host)
-    for _, text in { "Claude", "Team 5x", "Antigravity", "Google AI Pro", "Weekly · Fable", "38%" } do
+    for _, text in { "Claude", "Team 5x", "Weekly · Fable", "38%" } do
       t.contains(texts, text)
     end
-    t.ok(#env.ofType(host.panelTree, "progress") >= 5, "a meter per window")
+    t.eq(table.find(texts, "Google AI Pro"), nil, "the other provider's card is not shown")
+    t.ok(#env.ofType(host.panelTree, "progress") >= 3, "a meter per window")
+    texts = switchTo(host, "Antigravity")
+    for _, text in { "Antigravity", "Google AI Pro" } do
+      t.contains(texts, text)
+    end
+    t.eq(table.find(texts, "Team 5x"), nil)
+    texts = switchTo(host, "Claude")
+    t.contains(texts, "Team 5x")
+  end)
+
+  t.test("a single connected provider needs no switch", function()
+    local host = running({ config = { provider_antigravity = "off" } })
+    openPanel(host)
+    for _, n in env.ofType(host.panelTree, "button") do
+      t.ok(n.props.key == nil or not tostring(n.props.key):find("switch-", 1, true), "no switch button")
+    end
   end)
 
   t.test("a card shows who is signed in and has its own refresh button", function()
     local host = running()
-    local _, texts = openPanel(host)
+    openPanel(host)
+    local texts = switchTo(host, "Antigravity")
     t.contains(texts, "dev@example.com")
     local function withTooltip(text)
       for _, n in env.ofType(host.panelTree, "button") do
@@ -179,7 +207,6 @@ t.group("panel", function()
     end
     local btn = withTooltip("Refresh Antigravity now")
     t.ok(btn ~= nil, "refresh button on the Antigravity card")
-    t.ok(withTooltip("Refresh Claude now") ~= nil)
     local before = #host.requests
     btn.props.onClick()
     t.eq(host.stateValues.command.provider, "antigravity")
@@ -214,7 +241,8 @@ t.group("panel", function()
 
   t.test("error banner explains how to recover", function()
     local host = running({ antigravityResponse = { ok = true, status = 401, body = "" } })
-    local _, texts = openPanel(host)
+    openPanel(host)
+    local texts = switchTo(host, "Antigravity")
     t.contains(texts, "Sign-in rejected")
     t.contains(texts, "Run `agy` once and sign in with Google.")
   end)

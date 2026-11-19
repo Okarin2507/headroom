@@ -1,6 +1,6 @@
 --!nonstrict
--- Headroom panel: one card per signed-in provider, with every usage window of
--- each of its accounts, and the controls to add, sign in and remove accounts.
+-- Headroom panel: the selected provider's card (buttons at the top right switch
+-- between providers), with every usage window of each of its accounts, and the controls to add, sign in and remove accounts.
 --
 -- Each window shows its usage meter with a thin time track beneath it: when the
 -- meter runs ahead of the time track you are burning faster than the window
@@ -27,6 +27,7 @@ local addDraft = ""
 local renaming: string? = nil -- account whose name is being edited
 local renameDraft = ""
 local analyticsOpen = true -- the token sections; kept across opens
+local selected: string? = nil -- provider whose card shows; kept across opens
 local confirming: { key: string, untilAt: number }? = nil
 local copied: { key: string, untilAt: number }? = nil
 
@@ -71,7 +72,7 @@ local cardOptions = {
     render()
   end,
   onAddOpen = function(id: string)
-    adding, addDraft = id, ""
+    adding, addDraft, selected = id, "", id
     render()
   end,
   onAddCancel = function()
@@ -150,23 +151,50 @@ function render()
   if type(report) == "table" and type(report.providers) == "table" then
     for _, provider in report.providers do
       if isConnected(provider) or adding == provider.id then
-        table.insert(connected, cards.providerCard(provider, now, cardOptions))
+        table.insert(connected, provider)
       else
         table.insert(disconnected, cards.disconnectedRow(provider, cardOptions))
       end
     end
   end
 
+  -- One provider at a time: the selected one, else the first that is connected.
+  local current = connected[1]
+  for _, provider in connected do
+    if provider.id == selected then
+      current = provider
+    end
+  end
+
   local content
-  if #connected == 0 then
+  if current == nil then
     content = { cards.emptyState() }
     for _, row in disconnected do
       table.insert(content, row)
     end
   else
-    content = connected
+    content = { cards.providerCard(current, now, cardOptions) }
     if #disconnected > 0 then
       table.insert(content, ui.column({ gap = 8, key = "disconnected" }, disconnected))
+    end
+  end
+
+  -- The switch: one button per connected provider, the shown one filled.
+  local switch = {}
+  if #connected > 1 then
+    for _, provider in connected do
+      local id = provider.id
+      table.insert(switch, ui.button({
+        key = `switch-{id}`,
+        glyph = provider.brand.glyph,
+        variant = if current and id == current.id then "primary" else "ghost",
+        controlSize = "sm",
+        tooltip = provider.name,
+        onClick = function()
+          selected = id
+          render()
+        end,
+      }))
     end
   end
 
@@ -178,6 +206,7 @@ function render()
         ui.label({ text = "Headroom", fontSize = 16, fontWeight = "bold", color = "on_surface" }),
         cards.caption(subtitle(now)),
       }),
+      ui.row({ align = "center", gap = 2 }, switch),
       ui.button({
         glyph = "refresh",
         variant = "ghost",
