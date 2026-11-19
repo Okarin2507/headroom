@@ -141,6 +141,9 @@
     },
     "claude": {
       "hint": "Run `claude` once to sign in or renew the session."
+    },
+    "opencode": {
+      "hint": "Run `opencode` once; its token usage appears here."
     }
   },
   "reset": {
@@ -202,6 +205,9 @@
     },
     "provider_claude": {
       "label": "Providers · Claude"
+    },
+    "provider_opencode": {
+      "label": "Providers · opencode"
     },
     "refresh_minutes": {
       "description": "Minutes between fetches for each provider. Failed fetches retry sooner.",

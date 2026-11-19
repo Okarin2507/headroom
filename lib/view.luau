@@ -166,7 +166,10 @@ function M.barItems(report, shown: (string) -> boolean, windowPref: string, maxI
   for index, entry in M.signedIn(report) do
     local provider, account = entry.provider, entry.account
     -- A copy of an account already listed would show the same numbers twice.
-    if shown(provider.id) and account.duplicateOf == nil and (allAccounts or account.kind == "default") then
+    -- An account that answered with no windows (opencode: token counts only)
+    -- has nothing for the bar to show.
+    local hasNothing = account.status == "ok" and account.snapshot ~= nil and #account.snapshot.windows == 0
+    if shown(provider.id) and not hasNothing and account.duplicateOf == nil and (allAccounts or account.kind == "default") then
       local window = model.pick(account.snapshot and account.snapshot.windows or {}, windowPref)
       local urgency = if window then RANK[M.severity(window, now)] * 1000 + window.usedPercent else -1
       table.insert(items, {

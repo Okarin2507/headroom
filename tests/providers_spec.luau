@@ -342,4 +342,28 @@ t.group("antigravity", function()
   end)
 end)
 
+t.group("opencode", function()
+  local DB = "/home/test/.local/share/opencode/opencode.db"
+
+  t.test("signed in once its database exists; nothing is fetched or run", function()
+    local host, p, ctx = env.provider("opencode")
+    t.eq(p.isConfigured(ctx), false)
+    host.files[DB] = "x"
+    t.eq(p.isConfigured(ctx), true)
+    local snap, err = fetch(p, ctx)
+    t.eq(err, nil)
+    t.eq(#snap.windows, 0)
+    t.eq(#host.requests, 0)
+    t.eq(#host.spawned, 0)
+  end)
+
+  t.test("the token counts are read from XDG_DATA_HOME when set", function()
+    local host, p, ctx = env.provider("opencode")
+    t.eq(p.analytics.source, "opencode")
+    t.eq(p.analytics.folders(ctx)[1], "~/.local/share/opencode")
+    host.env["XDG_DATA_HOME"] = "/data"
+    t.eq(p.analytics.folders(ctx)[1], "/data/opencode")
+  end)
+end)
+
 return true

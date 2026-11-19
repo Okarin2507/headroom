@@ -2,15 +2,16 @@
 -- The Python program the analytics run (lib/analytics.luau). It lives here, as a
 -- string, so the plugin needs no file path to find it: it is run as
 --   python3 -I -c <this> <provider> <session start> <folder>...
--- It only reads the token counts Claude Code (<folder>/projects/**/*.jsonl) and
--- Antigravity (<folder>/*.db conversations) already keep, and prints one small
+-- It only reads the token counts Claude Code (<folder>/projects/**/*.jsonl),
+-- Antigravity (<folder>/*.db conversations) and opencode (<folder>/opencode.db)
+-- already keep, and prints one small
 -- JSON document. It writes nothing and makes no network call.
 
 return [==[
 import sys, os, json, glob, time, datetime, sqlite3
 
-# Headroom usage analytics. Read-only: aggregates the token counts Claude Code
-# and Antigravity already keep on disk and prints one small JSON document.
+# Headroom usage analytics. Read-only: aggregates the token counts Claude Code,
+# Antigravity and opencode already keep on disk and prints one small JSON document.
 # usage: python3 -c <this> <provider> <session_start_epoch|0> <dir> [<dir>...]
 
 WEEK = 7 * 86400
@@ -174,12 +175,51 @@ def agy_records(dirs, cutoff):
                 continue
 
 
+def opencode_records(dirs, cutoff):
+    """opencode keeps one row per assistant reply in <dir>/opencode.db."""
+    for root in dirs:
+        path = os.path.join(root, "opencode.db")
+        try:
+            if not os.path.exists(path):
+                continue
+            db = sqlite3.connect("file:" + path + "?mode=ro", uri=True, timeout=2)
+            rows = db.execute(
+                "select session_id, data from session_message where type = 'assistant' and time_created >= ?",
+                (int(cutoff * 1000),),
+            )
+            for session_id, blob in rows:
+                try:
+                    obj = json.loads(blob)
+                    tokens = obj.get("tokens")
+                    if not isinstance(tokens, dict):
+                        continue
+                    stamp = obj.get("time") or {}
+                    ms = stamp.get("completed") or stamp.get("created")
+                    cache = tokens.get("cache") or {}
+                    rec = {
+                        # Input is what the model read anew (cache reads excluded);
+                        # opencode counts reasoning apart from output, so add it back.
+                        "input": int(tokens.get("input") or 0) + int(cache.get("write") or 0),
+                        "output": int(tokens.get("output") or 0) + int(tokens.get("reasoning") or 0),
+                        "messages": 1,
+                    }
+                    if not ms or (not rec["input"] and not rec["output"]):
+                        continue
+                    model = (obj.get("model") or {}).get("id")
+                    yield ms / 1000.0, clean_model(model), rec, "opencode:" + str(session_id)
+                except Exception:
+                    continue
+            db.close()
+        except Exception:
+            continue
+
+
 def main():
     provider, start = sys.argv[1], int(sys.argv[2])
     dirs = [os.path.expanduser(d) for d in sys.argv[3:]]
     now = time.time()
     cutoff = now - MONTH - 86400
-    source = claude_records if provider == "claude" else agy_records
+    source = {"claude": claude_records, "opencode": opencode_records}.get(provider, agy_records)
 
     local_today = datetime.datetime.fromtimestamp(now).replace(hour=0, minute=0, second=0, microsecond=0)
     today_start = local_today.timestamp()

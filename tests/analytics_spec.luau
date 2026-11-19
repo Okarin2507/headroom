@@ -133,6 +133,38 @@ t.group("analytics", function()
     t.eq(#host.analyticsRuns, 2, "refresh asks again")
   end)
 
+  t.test("opencode shows token usage only, and the bar leaves it out", function()
+    local host = env.host()
+    host.files["/home/test/.local/share/opencode/opencode.db"] = "x"
+    host.commands["python3"] = true
+    host.analyticsRuns = {}
+    host.runHandler = function(argv)
+      if argv[1] == "python3" then
+        table.insert(host.analyticsRuns, argv)
+        return { exitCode = 0, stdout = scriptOutput(host) }
+      end
+      return nil
+    end
+    host.config.provider_opencode = "bar"
+    env.start(host, "service.luau")
+    local opencode
+    for _, view in host.globals.noctalia.state.get("report").providers do
+      if view.id == "opencode" then
+        opencode = view.accounts[1]
+      end
+    end
+    t.eq(opencode.status, "ok")
+    t.eq(opencode.analytics.periods.session.input, 2300000)
+    t.eq(host.analyticsRuns[1][5], "opencode")
+    t.eq(host.analyticsRuns[1][7], "/home/test/.local/share/opencode")
+    env.start(host, "bar.luau")
+    t.eq(#env.ofType(host.barTree, "image"), 0, "no ring: there is no limit to show")
+    local panel = env.start(host, "panel.luau")
+    panel.call("onOpen", "")
+    t.contains(env.texts(host.panelTree), "opencode")
+    t.contains(env.texts(host.panelTree), "Token usage")
+  end)
+
   t.test("the token analytics setting turns it off", function()
     local host = running({ config = { analytics = false } })
     t.eq(#host.analyticsRuns, 0, "nothing spawned")

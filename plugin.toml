@@ -16,7 +16,7 @@ plugin_api = 32
 author = "okarin"
 license = "MIT"
 icon = "gauge"
-description = "How much of your Claude and Antigravity plan limits is left, per account, with reset times and forecasts."
+description = "How much of your Claude and Antigravity plan limits is left, per account, with reset times and forecasts, and token usage for Claude, Antigravity and opencode."
 tags = ["bar", "panel", "service", "ai", "indicator", "productivity"]
 # All optional: each powers one feature listed in the README's Requirements,
 # and that feature is skipped when the tool is missing.
@@ -50,6 +50,18 @@ type = "select"
 label_key = "settings.provider_antigravity.label"
 description_key = "settings.provider.description"
 default = "bar"
+options = [
+  { value = "bar", label_key = "settings.provider.option.bar" },
+  { value = "panel", label_key = "settings.provider.option.panel" },
+  { value = "off", label_key = "settings.provider.option.off" },
+]
+
+[[setting]]
+key = "provider_opencode"
+type = "select"
+label_key = "settings.provider_opencode.label"
+description_key = "settings.provider.description"
+default = "panel"
 options = [
   { value = "bar", label_key = "settings.provider.option.bar" },
   { value = "panel", label_key = "settings.provider.option.panel" },

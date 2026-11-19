@@ -96,7 +96,9 @@ provider (Antigravity's included), and a single-account card names who is signed
 
 Under each account's meters, the **Token usage** section adds up the tokens you've actually spent, from files the CLIs
 already keep on this computer: Claude Code's transcripts (`<config folder>/projects/**/*.jsonl`) and Antigravity's
-conversation databases (`~/.gemini/antigravity*/conversations/*.db`). Nothing is sent anywhere, and nothing is written.
+conversation databases (`~/.gemini/antigravity*/conversations/*.db`), and opencode's database
+(`$XDG_DATA_HOME/opencode/opencode.db`, else `~/.local/share/opencode/opencode.db`). opencode has no plan limits, so its
+card shows token usage only (In is input plus cache writes, Out is output plus reasoning) and it stays off the bar. Nothing is sent anywhere, and nothing is written.
 
 - **Periods.** This 5-hour session (counted from the window's own start, so it lines up with the session meter),
   today, the last 7 days and the last 30 days.
@@ -155,7 +157,7 @@ Everything is on one page: Settings → Plugins → Headroom, or middle-click th
 
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
-| `provider_claude`, `provider_antigravity` | `select` | `bar` | Where each provider appears: `bar` (bar and panel), `panel` (panel only) or `off` (never fetched or shown). |
+| `provider_claude`, `provider_antigravity`, `provider_opencode` | `select` | `bar` (`panel` for opencode) | Where each provider appears: `bar` (bar and panel), `panel` (panel only) or `off` (never fetched or shown). |
 | `max_providers` | `int` | `3` | The most items the bar shows (1–8). If more qualify, it keeps the ones closest to their limits, forecast included. |
 | `bar_accounts` | `select` | `default` | When a provider has several accounts, whether the bar shows only the `default` one or `all` of them. The panel always shows them all. |
 | `window` | `select` | `session` | The window the bar shows: the 5-hour `session` (the tightest one, if a provider has several), `tightest` (closest to its limit), or `weekly`. |
