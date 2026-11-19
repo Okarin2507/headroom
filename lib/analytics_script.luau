@@ -269,7 +269,11 @@ def opencode_records(dirs, cutoff):
 
 def main():
     provider, start = sys.argv[1], int(sys.argv[2])
-    dirs = [os.path.expanduser(d) for d in sys.argv[3:]]
+    # A folder may carry a "*" (T3 Code keeps agy's data under a hashed folder).
+    dirs = []
+    for d in sys.argv[3:]:
+        d = os.path.expanduser(d)
+        dirs.extend(sorted(glob.glob(d)) if "*" in d else [d])
     now = time.time()
     cutoff = now - MONTH - 86400
     source = {"claude": claude_records, "opencode": opencode_records}.get(provider, agy_records)

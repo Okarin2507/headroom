@@ -423,6 +423,8 @@ return provider.define({
         "~/.gemini/antigravity-cli/conversations",
         "~/.gemini/antigravity/conversations",
         "~/.gemini/antigravity-ide/conversations",
+        -- T3 Code runs agy as its own ACP server, with data under a hashed folder.
+        "~/.t3/userdata/providers/antigravity/*/antigravity-acp/conversations",
       }
     end,
   },

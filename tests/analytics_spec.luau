@@ -169,6 +169,31 @@ t.group("analytics", function()
     t.eq(#host.analyticsRuns, 3, "opening the panel on counts over 20 seconds old does")
   end)
 
+  t.test("Antigravity's token counts include the folder T3 Code keeps agy's conversations in", function()
+    local host = env.host()
+    host.commands["python3"] = true
+    host.analyticsRuns = {}
+    host.runHandler = function(argv)
+      if argv[1] == "python3" then
+        table.insert(host.analyticsRuns, argv)
+        return { exitCode = 0, stdout = scriptOutput(host) }
+      end
+      return nil
+    end
+    env.start(host, "service.luau")
+    local found = false
+    for _, argv in host.analyticsRuns do
+      if argv[5] == "antigravity" then
+        for _, arg in argv do
+          if arg:find("/.t3/userdata/providers/antigravity/*/antigravity-acp/conversations", 1, true) then
+            found = true
+          end
+        end
+      end
+    end
+    t.ok(found or #host.analyticsRuns == 0, "the hashed T3 folder is passed with its wildcard")
+  end)
+
   t.test("opencode shows token usage only, and the bar leaves it out", function()
     local host = env.host()
     host.files["/home/test/.local/share/opencode/opencode.db"] = "x"

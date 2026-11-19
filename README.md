@@ -104,7 +104,7 @@ so it needs `python3` and the `analytics` setting like the sections below.
 
 Under each account's meters, the **Token usage** section adds up the tokens you've actually spent, from files the CLIs
 already keep on this computer: Claude Code's transcripts (`<config folder>/projects/**/*.jsonl`) and Antigravity's
-conversation databases (`~/.gemini/antigravity*/conversations/*.db`), and opencode's database
+conversation databases (`~/.gemini/antigravity*/conversations/*.db`, and the ones T3 Code keeps under `~/.t3/userdata/providers/antigravity/*/antigravity-acp/conversations`), and opencode's database
 (`$XDG_DATA_HOME/opencode/opencode.db`, else `~/.local/share/opencode/opencode.db`; In is input plus cache writes, Out is
 output plus reasoning). Signed in to an OpenCode account with a **Go** plan, the opencode card also shows the plan's 5-hour,
 weekly and monthly spend limits, as percentages with reset times and forecasts. Without a Go plan it shows token
