@@ -1,0 +1,34 @@
+{
+  "groups": [
+    {
+      "displayName": "Gemini Models",
+      "description": "Models within this group: Gemini 4 Neon, Gemini 4 Hydrogen, Gemini 3.8 Flash",
+      "buckets": [
+        { "bucketId": "gemini-weekly", "displayName": "Weekly Limit Remaining", "window": "weekly", "resetTime": "2026-11-26T13:52:55Z", "remainingFraction": 0.9 },
+        { "bucketId": "gemini-5h", "displayName": "Five Hour Limit Remaining", "window": "5h", "resetTime": "2026-11-19T18:52:55Z", "remainingFraction": 0.5 }
+      ]
+    },
+    {
+      "displayName": "Claude and GPT models",
+      "buckets": [
+        { "bucketId": "3p-5h", "window": "5h", "resetTime": "2026-11-19T19:06:50Z", "remainingFraction": 1 }
+      ]
+    },
+    {
+      "displayName": "Gemini 5 Helium",
+      "description": "A model that did not exist when this was written.",
+      "buckets": [
+        { "bucketId": "helium-weekly", "displayName": "Helium Weekly Limit", "window": "weekly", "resetTime": "2026-11-26T14:06:50Z", "remainingFraction": 0.25 },
+        { "bucketId": "helium-daily", "displayName": "Helium Daily Limit", "window": "daily", "resetTime": "2026-11-20T00:00:00Z", "remainingFraction": 0.6 }
+      ]
+    },
+    {
+      "displayName": "Opus Next",
+      "buckets": [
+        { "bucketId": "gemini-5h", "window": "5h", "resetTime": "2026-11-19T19:00:00Z", "remainingFraction": 0.8 },
+        { "bucketId": "mystery", "window": "fortnightly", "resetTime": "2026-12-01T00:00:00Z", "remainingFraction": 0.7 },
+        { "bucketId": "broken", "window": "5h", "remainingFraction": null }
+      ]
+    }
+  ]
+}

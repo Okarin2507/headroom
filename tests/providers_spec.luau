@@ -164,6 +164,25 @@ t.group("antigravity", function()
     t.eq(w["3p-5h"].label, "Claude & GPT · Session")
   end)
 
+  t.test("a model with its own limit, an unseen cadence or a repeated id still shows", function()
+    local host, p, ctx = env.provider("antigravity")
+    local snap = p.parse(host.globals.noctalia.json.decode(env.fixture("antigravity_quota_future.json")), ctx)
+    local w, count = byId(snap.windows), 0
+    for _ in snap.windows do
+      count += 1
+    end
+    t.eq(count, 8 - 1, "every bucket with a usable fraction, none dropped for its cadence")
+    t.eq(w["helium-weekly"].label, "Gemini 5 Helium · Weekly")
+    t.near(w["helium-weekly"].usedPercent, 75, 1e-6)
+    t.eq(w["helium-daily"].periodSeconds, 86400)
+    t.eq(w["helium-daily"].label, "Gemini 5 Helium · Helium Daily Limit")
+    t.eq(w["mystery"].kind, "other")
+    t.eq(w["mystery"].periodSeconds, nil)
+    t.eq(w["Opus Next:gemini-5h"].label, "Opus Next · Session", "a repeated bucket id gets its group's name, so ids stay unique")
+    t.eq(w["gemini-5h"].detail, "Gemini 4 Neon, Gemini 4 Hydrogen, Gemini 3.8 Flash", "the group says which models share the limit")
+    t.eq(w["3p-5h"].label, "Claude & GPT · Session")
+  end)
+
   t.test("Gemini's windows come first, session before weekly, then the other models'", function()
     local host, p, ctx = env.provider("antigravity")
     local snap = p.parse(host.globals.noctalia.json.decode(env.fixture("antigravity_quota.json")), ctx)
@@ -207,7 +226,7 @@ t.group("antigravity", function()
     t.eq(snap.plan, "Google AI Pro")
     for _, req in host.requests do
       t.eq(req.method, "POST")
-      t.eq(env.headerOf(req, "User-Agent"), "antigravity/cli/1.5.7 linux/amd64", "agy's own format; a bare 'antigravity' gets no Gemini groups")
+      t.eq(env.headerOf(req, "User-Agent"), "antigravity/cli/1.5.11 linux/amd64", "agy's own format; a bare 'antigravity' gets no Gemini groups")
     end
     t.eq(commands(host)[1], KEYRING)
   end)

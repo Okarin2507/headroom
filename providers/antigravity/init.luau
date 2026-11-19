@@ -45,7 +45,7 @@ local MODELS_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAv
 -- The service gates its Gemini groups on the client's User-Agent: a bare
 -- "antigravity" gets Claude & GPT only, and so does an old agy version (1.0.0).
 -- This is agy's own format; bump the version if Google starts rejecting it.
-local USER_AGENT = "antigravity/cli/1.5.7 linux/amd64"
+local USER_AGENT = "antigravity/cli/1.5.11 linux/amd64"
 local SESSION_SECONDS = model.SESSION_SECONDS
 local WEEK_SECONDS = model.WEEK_SECONDS
 
@@ -142,17 +142,49 @@ local function renewWithAgy(ctx, done: (boolean) -> ())
   renewSession(ctx, { "env", "AGY_CLI_DISABLE_AUTO_UPDATE=true", agy, "models" }, done)
 end
 
--- "Gemini Models" -> "Gemini", "Claude and GPT models" -> "Claude & GPT"; a
--- model's own group ("Gemini 4 Argon") keeps its name.
-local function groupLabel(name: any): string
-  name = if type(name) == "string" then name else ""
-  if name:find("Claude", 1, true) or name:find("GPT", 1, true) then
-    return "Claude & GPT"
-  elseif name:find("Gemini", 1, true) then
-    local base = name:gsub("%s+[Mm]odels$", "")
-    return if base == "Gemini" or base == "" then "Gemini" else base
+-- A group's name for the panel. The API names groups after what they cover
+-- ("Gemini Models", "Claude and GPT models", "Gemini 4 Argon"), so a model that
+-- gets its own limit shows up under its own name without a code change. Only
+-- the filler is trimmed: "Gemini Models" -> "Gemini", "Claude and GPT models"
+-- -> "Claude & GPT".
+local function groupLabel(group: any, index: number): string
+  local name = if type(group.displayName) == "string" then group.displayName else ""
+  if name == "" and type(group.groupId) == "string" then
+    name = group.groupId
   end
-  return name
+  name = name:gsub("%s+[Mm]odels$", ""):gsub("%s+[Aa]nd%s+", " & ")
+  name = name:match("^%s*(.-)%s*$")
+  return if name ~= "" then name else `Group {index}`
+end
+
+-- "Models within this group: Gemini 4 Neon, Gemini 4 Hydrogen" -> that list, so
+-- a tooltip tells which models share a limit, whatever the models are called.
+local function groupModels(group: any): string?
+  local text = if type(group.description) == "string" then group.description else nil
+  local list = text and text:match("[Mm]odels within this group:%s*(.-)%.?%s*$")
+  return if list and list ~= "" then list else nil
+end
+
+-- A bucket's cadence: "5h", "24h", "daily", "weekly", "monthly" (from `window`,
+-- else the end of its id). Returns the kind the panel files it under and the
+-- length in seconds; a cadence this code has never seen still shows, as "other".
+local function cadenceOf(bucket: any, id: string): (string, number?)
+  local cadence = if type(bucket.window) == "string" then bucket.window:lower() else ""
+  if cadence == "" then
+    cadence = id:lower():match("[%-_:]([%w]+)$") or ""
+  end
+  local hours = cadence:match("^(%d+)h$")
+  if hours then
+    local seconds = tonumber(hours) * 3600
+    return (if seconds <= model.SESSION_SECONDS then "session" else "other"), seconds
+  elseif cadence == "weekly" or cadence == "week" then
+    return "weekly", WEEK_SECONDS
+  elseif cadence == "daily" or cadence == "day" then
+    return "other", 86400
+  elseif cadence == "monthly" or cadence == "month" then
+    return "other", 30 * 86400
+  end
+  return "other", nil
 end
 
 -- The panel lists windows in this order: Gemini first (session, then weekly),
@@ -184,26 +216,36 @@ local function parse(data, ctx): (model.Snapshot?, model.ProviderError?)
     return nil, model.err(E.Parse, "no quota groups")
   end
   local windows = {}
-  for _, group in groups do
-    local label = groupLabel(group.displayName)
+  local used = {}
+  for index, group in groups do
+    if type(group) ~= "table" then
+      continue
+    end
+    local label = groupLabel(group, index)
+    local models = groupModels(group)
     for _, bucket in (if type(group.buckets) == "table" then group.buckets else {}) do
       local remaining = tonumber(bucket.remainingFraction)
       local id = tostring(bucket.bucketId or "")
-      local cadence = bucket.window
-      local weekly = cadence == "weekly" or id:sub(-6) == "weekly"
-      local session = cadence == "5h" or id:sub(-2) == "5h"
+      local kind, period = cadenceOf(bucket, id)
       -- A missing fraction is unknown usage, not 0%: skip it rather than reassure.
-      if remaining == nil or remaining ~= remaining or remaining < 0 or remaining > 1 or not (weekly or session) then
+      if remaining == nil or remaining ~= remaining or remaining < 0 or remaining > 1 then
         continue
       end
-      local kind = if weekly then "weekly" else "session"
+      -- Window ids must be unique (they key notifications and pacing).
+      local windowId = if id ~= "" then id else `{label}:{kind}`
+      if used[windowId] then
+        windowId = `{label}:{windowId}`
+      end
+      used[windowId] = true
+      local cadenceName = if kind == "session" or kind == "weekly" then ctx.tr(`window.{kind}`) else (bucket.displayName or id)
       table.insert(windows, model.window({
-        id = if id ~= "" then id else `{label}:{kind}`,
+        id = windowId,
         kind = kind,
-        label = `{label} · {ctx.tr(`window.{kind}`)}`,
+        label = `{label} · {cadenceName}`,
+        detail = models,
         usedPercent = (1 - remaining) * 100,
         resetsAt = time.parseIso8601(bucket.resetTime),
-        periodSeconds = if weekly then WEEK_SECONDS else SESSION_SECONDS,
+        periodSeconds = period,
       }))
     end
   end

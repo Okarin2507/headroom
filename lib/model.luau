@@ -18,6 +18,7 @@ export type Window = {
   resetsAt: number?, -- Unix seconds
   periodSeconds: number?, -- window length; enables pacing
   limitReached: boolean?,
+  detail: string?, -- optional tooltip: which models share this limit
 }
 
 -- A secondary fact shown under the windows: credits, extra usage, ...
@@ -73,6 +74,7 @@ function M.window(fields): Window
     usedPercent = clampPercent(fields.usedPercent),
     resetsAt = fields.resetsAt,
     periodSeconds = fields.periodSeconds,
+    detail = fields.detail,
     limitReached = fields.limitReached == true or clampPercent(fields.usedPercent) >= 100,
   }
 end

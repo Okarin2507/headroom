@@ -115,7 +115,7 @@ local function windowRow(window, now: number, dimmed: boolean)
     }))
   end
 
-  return ui.column({ gap = 6, key = window.id, opacity = if dimmed then 0.6 else 1 }, children)
+  return ui.column({ gap = 6, key = window.id, opacity = if dimmed then 0.6 else 1, tooltip = window.detail }, children)
 end
 
 -- What failed and how to fix it; when older data is still shown below, says

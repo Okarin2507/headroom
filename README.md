@@ -31,7 +31,9 @@ Sign in to at least one of these. Headroom picks up each one on its own; there i
   without Antigravity quota show *No quota on this plan*.
   The limits come from the same quota summary the CLI's `/usage` shows, asked for the way agy asks (the daily host, a
   `antigravity/cli/<version>` User-Agent and the project from `loadCodeAssist`): **Gemini** (5-hour and weekly),
-  **Gemini 4 Argon** (weekly) and **Claude & GPT** (5-hour and weekly). Gemini is listed first. It never runs `agy`
+  **Gemini 4 Argon** (weekly) and **Claude & GPT** (5-hour and weekly). Gemini is listed first. Groups are
+  not hard-coded: whatever group the API returns (a new model with its own limit, a daily or monthly cadence) is listed
+  under the name Google gives it, and hovering a limit names the models that share it. It never runs `agy`
   for this, so it costs no model quota. If Google stops answering with Gemini groups, the 5-hour Gemini limit is read
   from the model list as a fallback.
 
