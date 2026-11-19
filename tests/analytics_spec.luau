@@ -154,6 +154,21 @@ t.group("analytics", function()
     t.eq(#host.analyticsRuns, 2, "refresh asks again")
   end)
 
+  t.test("token counts follow their own pace, not the refresh interval, and opening the panel rescans old ones", function()
+    local host, svc = running()
+    host.config.refresh_minutes = 30
+    t.eq(#host.analyticsRuns, 1)
+    host.clock += 61
+    svc.call("update")
+    t.eq(#host.analyticsRuns, 2, "a minute later, though the API refresh is every 30")
+    host.clock += 10
+    host.globals.noctalia.state.set("command", { action = "refresh", maxAge = 300 })
+    t.eq(#host.analyticsRuns, 2, "opening the panel right after a scan does not scan again")
+    host.clock += 15
+    host.globals.noctalia.state.set("command", { action = "refresh", maxAge = 300 })
+    t.eq(#host.analyticsRuns, 3, "opening the panel on counts over 20 seconds old does")
+  end)
+
   t.test("opencode shows token usage only, and the bar leaves it out", function()
     local host = env.host()
     host.files["/home/test/.local/share/opencode/opencode.db"] = "x"

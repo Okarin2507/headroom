@@ -97,10 +97,11 @@ end
 local function analyticsEnabled(): boolean
   return state.config("analytics", true)
 end
-
 -- Local file scans are cheap but not free, so they run less often than the
--- usage endpoints, whatever the refresh interval.
-local ANALYTICS_MIN_SECONDS = 120
+-- usage endpoints would, and independently of the refresh interval.
+local ANALYTICS_MIN_SECONDS = 60
+-- Opening the panel rescans token counts older than this.
+local ANALYTICS_OPEN_SECONDS = 20
 
 local function eachListed(fn: (Runtime) -> ())
   for _, p in registry do
@@ -456,7 +457,7 @@ local function collectAnalytics(rt: Runtime, now: number): boolean
   if spec == nil or rt.analyticsBusy or not analyticsEnabled() then
     return false
   end
-  if now - rt.analyticsAt < math.max(ANALYTICS_MIN_SECONDS, intervalSeconds()) then
+  if now - rt.analyticsAt < ANALYTICS_MIN_SECONDS then
     return false
   end
   rt.analyticsBusy = true
@@ -544,8 +545,10 @@ local function refresh(maxAge: number?, providerId: string?)
     if wanted then
       scheduler.force(rt.schedule, now)
     end
-    -- Opening the panel asks for fresh usage; the local counts follow their own pace.
-    if maxAge == nil then
+    -- The local counts follow their own pace, not the API's refresh interval:
+    -- the refresh button rescans now, and opening the panel rescans counts that
+    -- are more than ANALYTICS_OPEN_SECONDS old.
+    if maxAge == nil or now - rt.analyticsAt >= ANALYTICS_OPEN_SECONDS then
       rt.analyticsAt = -math.huge
     end
   end)
