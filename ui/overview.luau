@@ -205,7 +205,7 @@ local function chart(data)
       table.insert(segments, ui.box({ width = barWidth, height = 2, radius = 1, fill = "on_surface/0.10" }))
     end
     -- Per-day names fit under their bars; 24 hours get one axis line instead.
-    local children = { ui.column({ gap = 1, align = "center", justify = "end" }, segments) }
+    local children = { ui.column({ align = "center", justify = "end" }, segments) }
     if count <= 12 then
       table.insert(children, cards.caption(slot.label, nil, { fontSize = 10, maxLines = 1 }))
     end
