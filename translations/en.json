@@ -100,8 +100,7 @@
   "note": {
     "extra_usage": "Extra usage",
     "of": "{used} of {limit}",
-    "on": "On",
-    "spend": "{window} spend"
+    "on": "On"
   },
   "notify": {
     "body": "{window} is at {percent}%.",

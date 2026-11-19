@@ -17,7 +17,6 @@ local time = require("../../lib/time.luau")
 local E = model.ErrorCode
 
 local STATUS_URL = "https://opencode.ai/console/api/go/status"
-local MICRO_CENTS_PER_DOLLAR = 1e8
 local DAY = 86400
 local MONTH_SECONDS = 30 * DAY
 local TOKEN_TTL = 600 -- how long a token read from the database is reused
@@ -81,15 +80,11 @@ local function readToken(ctx, done)
   end)
 end
 
-local function dollars(microCents: number): string
-  return string.format("$%.2f", microCents / MICRO_CENTS_PER_DOLLAR)
-end
-
--- One Go meter -> a window (percent of its spend limit) and a "spent of limit" note.
+-- One Go meter -> a window: the percent of its spend limit used.
 local function meter(ctx, id: string, kind: string, label: string, raw: any, periodSeconds: number, resetsAt: number?)
   local limit, used = type(raw) == "table" and tonumber(raw.limitMicroCents), type(raw) == "table" and tonumber(raw.usedMicroCents)
   if not limit or not used or limit <= 0 or used < 0 then
-    return nil, nil
+    return nil
   end
   local window = model.window({
     id = id,
@@ -99,11 +94,7 @@ local function meter(ctx, id: string, kind: string, label: string, raw: any, per
     resetsAt = resetsAt,
     periodSeconds = periodSeconds,
   })
-  local note = {
-    label = ctx.tr("note.spend", { window = label }),
-    value = ctx.tr("note.of", { used = dollars(used), limit = dollars(limit) }),
-  }
-  return window, note
+  return window
 end
 
 -- Exposed for tests: the Go status document -> Snapshot, nil when it has no meters.
@@ -116,7 +107,7 @@ local function parse(data, ctx): model.Snapshot?
   local month = type(meters.month) == "table" and meters.month or {}
   local monthEnd = time.parseIso8601(month.resetsAt or access.endsAt)
   local monthStart = time.parseIso8601(access.startsAt)
-  local windows, notes = {}, {}
+  local windows = {}
   for _, def in {
     { "fiveHour", "go-5h", "session", ctx.tr("window.session"), model.SESSION_SECONDS },
     { "week", "go-weekly", "weekly", ctx.tr("window.weekly"), model.WEEK_SECONDS },
@@ -124,16 +115,15 @@ local function parse(data, ctx): model.Snapshot?
   } do
     local raw = meters[def[1]]
     local resets = if def[1] == "month" then monthEnd else time.parseIso8601(type(raw) == "table" and raw.resetsAt or nil)
-    local window, note = meter(ctx, def[2], def[3], def[4], raw, def[5], resets)
+    local window = meter(ctx, def[2], def[3], def[4], raw, def[5], resets)
     if window then
       table.insert(windows, window)
-      table.insert(notes, note)
     end
   end
   if #windows == 0 then
     return nil
   end
-  return model.snapshot({ plan = "Go", windows = windows, notes = notes, fetchedAt = ctx.now() })
+  return model.snapshot({ plan = "Go", windows = windows, notes = {}, fetchedAt = ctx.now() })
 end
 
 return provider.define({

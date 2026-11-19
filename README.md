@@ -100,7 +100,7 @@ already keep on this computer: Claude Code's transcripts (`<config folder>/proje
 conversation databases (`~/.gemini/antigravity*/conversations/*.db`), and opencode's database
 (`$XDG_DATA_HOME/opencode/opencode.db`, else `~/.local/share/opencode/opencode.db`; In is input plus cache writes, Out is
 output plus reasoning). Signed in to an OpenCode account with a **Go** plan, the opencode card also shows the plan's 5-hour,
-weekly and monthly spend limits, as percentages with reset times and the dollars spent. Without a Go plan it shows token
+weekly and monthly spend limits, as percentages with reset times and forecasts. Without a Go plan it shows token
 usage only. It stays off the bar unless you set `provider_opencode` to `bar`. Nothing is sent anywhere, and nothing is written.
 
 - **Periods.** This 5-hour session (counted from the window's own start, so it lines up with the session meter),
