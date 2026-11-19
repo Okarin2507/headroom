@@ -188,7 +188,7 @@ function render()
         padding = 6,
         radius = 8,
         align = "center",
-        fill = if showOverview then "primary/0.22" else nil,
+        fill = if showOverview then "primary/0.22" else "primary/0",
         tooltip = noctalia.tr("overview.tab"),
         onClick = function()
           selected = "overview"
@@ -206,7 +206,7 @@ function render()
         padding = 6,
         radius = 8,
         align = "center",
-        fill = if active then "primary/0.22" else nil,
+        fill = if active then "primary/0.22" else "primary/0",
         tooltip = provider.name,
         onClick = function()
           selected = id
