@@ -208,6 +208,15 @@ t.group("analytics", function()
       t.contains(texts, text)
     end
     t.eq(table.find(texts, "Token usage"), nil, "no per-provider cards")
+    local bars = env.find(host.panelTree, function(n)
+      return type(n.props.tooltip) == "string" and n.props.tooltip:find("–", 1, true) ~= nil
+    end)
+    t.eq(#bars, 24, "a tooltip on every hour")
+    t.eq(bars[24].props.tooltip, "14:00–15:00\nClaude: 700k\nIn 600k · Out 100k", "when, who and how much")
+    t.eq(bars[1].props.tooltip, "15:00–16:00\nNo usage")
+    for _, mark in { "15:00", "21:00", "03:00", "08:00", "14:00" } do
+      t.contains(texts, mark)
+    end
     local week = env.find(host.panelTree, function(n)
       return n.props.key == "range-7d"
     end)[1]

@@ -110,6 +110,7 @@
   "overview": {
     "daily": "Tokens per day",
     "hourly": "Tokens per hour",
+    "idle": "No usage",
     "models": "Breakdown by model",
     "none": "No token usage in this range.",
     "range_24h": "24 hours",

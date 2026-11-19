@@ -68,6 +68,10 @@ function M.collect(providers, rangeKey: string)
             label = bucket.hour or bucket.weekday or "",
             -- the axis line under a long chart: "14:00" or "11-19"
             axis = if bucket.hour then `{bucket.hour}:00` else (bucket.date or ""):sub(6),
+            -- what a bar's tooltip leads with: "13:00–14:00" or "Mon 2026-11-17"
+            title = if bucket.hour
+              then string.format("%s:00–%02d:00", bucket.hour, ((tonumber(bucket.hour) or 0) + 1) % 24)
+              else `{bucket.weekday} {bucket.date}`,
             date = bucket.date,
             total = 0, input = 0, output = 0, parts = {},
           }
@@ -107,6 +111,11 @@ function M.collect(providers, rangeKey: string)
     return a.name < b.name
   end)
   return { total = total, providers = rows, series = series, models = modelList, range = range }
+end
+
+-- "In 984k · Out 306k"
+local function inOut(totals): string
+  return noctalia.tr("analytics.in_out", { input = analytics.compact(totals.input), output = analytics.compact(totals.output) })
 end
 
 local function percent(part: number, whole: number): string
@@ -189,7 +198,6 @@ local function chart(data)
           height = math.max(2, math.floor(part / peak * CHART_HEIGHT + 0.5)),
           radius = 2,
           fill = row.provider.brand.tint,
-          tooltip = `{row.provider.name}: {analytics.compact(part)}`,
         }))
       end
     end
@@ -201,8 +209,18 @@ local function chart(data)
     if count <= 12 then
       table.insert(children, cards.caption(slot.label, nil, { fontSize = 10, maxLines = 1 }))
     end
+    -- Hovering a bar says when it is and what each provider spent in it.
+    local lines = { slot.title }
+    for _, row in data.providers do
+      local part = slot.parts[row.provider.id] or 0
+      if part > 0 then
+        table.insert(lines, `{row.provider.name}: {analytics.compact(part)}`)
+      end
+    end
+    table.insert(lines, if slot.total > 0 then inOut(slot) else noctalia.tr("overview.idle"))
     table.insert(columns, ui.column({
       key = `{slot.date or slot.label}-{i}`,
+      tooltip = table.concat(lines, "\n"),
       flexGrow = 1,
       align = "center",
       justify = "end",
@@ -215,15 +233,19 @@ local function chart(data)
     ui.row({ gap = if count > 12 then 2 else 4, align = "end" }, columns),
   }
   if count > 12 then
-    -- Start, middle and end of the day: "14:00   02:00   now".
-    local function at(i: number): string
-      return data.series[i].axis
+    -- Five marks along the axis: the start, three in between and the end
+    -- ("14:00  20:00  02:00  08:00  13:00").
+    local ticks = {}
+    for k = 0, 4 do
+      local i = math.floor(1 + (count - 1) * k / 4 + 0.5)
+      ticks[#ticks + 1] = cards.caption(data.series[i].axis, nil, {
+        fontSize = 10,
+        flexGrow = 1,
+        maxLines = 1,
+        textAlign = if k == 0 then "left" elseif k == 4 then "right" else "center",
+      })
     end
-    table.insert(body, ui.row({ align = "center" }, {
-      cards.caption(at(1), nil, { fontSize = 10, flexGrow = 1, maxLines = 1 }),
-      cards.caption(at(math.ceil(count / 2)), nil, { fontSize = 10, flexGrow = 1, textAlign = "center", maxLines = 1 }),
-      cards.caption(at(count), nil, { fontSize = 10, flexGrow = 1, textAlign = "right", maxLines = 1 }),
-    }))
+    table.insert(body, ui.row({ align = "center" }, ticks))
   end
   return ui.column({ gap = 8 }, body)
 end
