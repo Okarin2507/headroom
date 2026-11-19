@@ -93,6 +93,13 @@ In the panel, `R` refreshes everything and `Esc` closes. Each provider's card ha
 provider (Antigravity's included), and a single-account card names who is signed in (Antigravity's email comes from the
 `id_token_email` that `agy` stores next to its token; nothing is fetched for it).
 
+### Overview
+
+The first button at the top right of the panel opens **Overview**: every provider's token usage added up, over the last
+24 hours or the last 7 days (switch at its top). It shows the total and responses, each provider's share, a chart stacked by
+provider (per hour, or per day), the In / Out split, and a breakdown by model. It appears once any provider has token counts,
+so it needs `python3` and the `analytics` setting like the sections below.
+
 ### Token usage
 
 Under each account's meters, the **Token usage** section adds up the tokens you've actually spent, from files the CLIs

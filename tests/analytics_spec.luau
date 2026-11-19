@@ -19,7 +19,18 @@ local function scriptOutput(host)
     day.weekday = name
     table.insert(days, day)
   end
+  local hours = {}
+  for i = 0, 23 do
+    local hour = totals(0, 0, 0)
+    hour.hour = string.format("%02d", (i + 15) % 24)
+    if i == 23 then
+      hour.input, hour.output, hour.messages = 600000, 100000, 40
+    end
+    table.insert(hours, hour)
+  end
   return host.globals.noctalia.json.encode({
+    hours = hours,
+    modelsDay = { { name = "claude-sonnet-5-5", input = 600000, output = 100000, messages = 40 } },
     generatedAt = 1790000000,
     sessionStart = 1789990000,
     lastActivity = 1789999000,
@@ -27,6 +38,7 @@ local function scriptOutput(host)
     periods = {
       session = totals(2300000, 970000, 1157),
       today = totals(2500000, 1012000, 1243),
+      day = totals(600000, 100000, 40),
       week = totals(9000000, 3969000, 4374),
       month = totals(9000000, 3969000, 4374),
     },
@@ -169,6 +181,29 @@ t.group("analytics", function()
     panel.call("onOpen", "")
     t.contains(env.texts(host.panelTree), "opencode")
     t.contains(env.texts(host.panelTree), "Token usage")
+  end)
+
+  t.test("the Overview tab adds the providers up: shares, chart, totals and models", function()
+    local host = running()
+    local panel = env.start(host, "panel.luau")
+    panel.call("onOpen", "")
+    local tab = env.find(host.panelTree, function(n)
+      return n.props.key == "switch-overview"
+    end)[1]
+    t.ok(tab ~= nil, "an Overview button at the top right")
+    tab.props.onClick()
+    local texts = env.texts(host.panelTree)
+    for _, text in { "700k", "40 responses", "Claude", "100% of tokens", "Tokens per hour", "Totals", "Breakdown by model", "Sonnet 5.5", "In 86%", "Out 14%" } do
+      t.contains(texts, text)
+    end
+    t.eq(table.find(texts, "Token usage"), nil, "no per-provider cards")
+    local week = env.find(host.panelTree, function(n)
+      return n.props.key == "range-7d"
+    end)[1]
+    week.props.onClick()
+    texts = env.texts(host.panelTree)
+    t.contains(texts, "Tokens per day")
+    t.contains(texts, "13M") -- 9.0M In + 3.969M Out over 7 days
   end)
 
   t.test("the token analytics setting turns it off", function()

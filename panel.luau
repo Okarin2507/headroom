@@ -12,6 +12,7 @@ local state = require("./lib/state.luau")
 local view = require("./lib/view.luau")
 local time = require("./lib/time.luau")
 local cards = require("./ui/cards.luau")
+local overview = require("./ui/overview.luau")
 
 local report = noctalia.state.get(state.REPORT)
 local isOpen = false
@@ -27,7 +28,8 @@ local addDraft = ""
 local renaming: string? = nil -- account whose name is being edited
 local renameDraft = ""
 local analyticsOpen = true -- the token sections; kept across opens
-local selected: string? = nil -- provider whose card shows; kept across opens
+local selected: string? = nil -- provider whose card shows, or "overview"; kept across opens
+local overviewRange = "24h" -- the Overview tab's range ("24h" | "7d")
 local confirming: { key: string, untilAt: number }? = nil
 local copied: { key: string, untilAt: number }? = nil
 
@@ -65,6 +67,10 @@ local cardOptions = {
   onCopy = function(key: string, text: string)
     noctalia.copyToClipboard(text, "text/plain")
     copied = { key = key, untilAt = view.now() + COPIED_SECONDS }
+    render()
+  end,
+  onOverviewRange = function(key: string)
+    overviewRange = key
     render()
   end,
   onToggleAnalytics = function()
@@ -144,6 +150,7 @@ function render()
   cardOptions.adding = adding
   cardOptions.renaming = renaming
   cardOptions.analyticsOpen = analyticsOpen
+  cardOptions.overviewRange = overviewRange
   cardOptions.confirmingRemove = if confirming and now < confirming.untilAt then confirming.key else nil
   cardOptions.copied = if copied and now < copied.untilAt then copied.key else nil
 
@@ -166,8 +173,17 @@ function render()
     end
   end
 
+  -- The Overview tab exists once any provider has token counts to show.
+  local hasOverview = overview.available(connected)
+  local showOverview = hasOverview and (selected == "overview")
+
   local content
-  if current == nil then
+  if showOverview then
+    content = overview.view(connected, cardOptions)
+    if #disconnected > 0 then
+      table.insert(content, ui.column({ gap = 8, key = "disconnected" }, disconnected))
+    end
+  elseif current == nil then
     content = { cards.emptyState() }
     for _, row in disconnected do
       table.insert(content, row)
@@ -181,10 +197,26 @@ function render()
 
   -- The switch: one button per connected provider, the shown one filled.
   local switch = {}
-  if #connected > 1 then
+  if #connected > 1 or hasOverview then
+    if hasOverview then
+      table.insert(switch, ui.row({
+        key = "switch-overview",
+        padding = 6,
+        radius = 8,
+        align = "center",
+        fill = if showOverview then "primary/0.22" else nil,
+        tooltip = noctalia.tr("overview.tab"),
+        onClick = function()
+          selected = "overview"
+          render()
+        end,
+      }, {
+        ui.glyph({ name = "layout-dashboard", size = 16, color = "on_surface", opacity = if showOverview then 1 else 0.6 }),
+      }))
+    end
     for _, provider in connected do
       local id = provider.id
-      local active = current ~= nil and id == current.id
+      local active = not showOverview and current ~= nil and id == current.id
       table.insert(switch, ui.row({
         key = `switch-{id}`,
         padding = 6,

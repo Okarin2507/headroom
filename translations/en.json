@@ -109,6 +109,22 @@
     "reset_title": "{provider} {window} has reset",
     "title": "{provider} usage is running low"
   },
+  "overview": {
+    "daily": "Tokens per day",
+    "hourly": "Tokens per hour",
+    "models": "Breakdown by model",
+    "none": "No token usage in this range.",
+    "range_24h": "24 hours",
+    "range_7d": "7 days",
+    "responses": "Responses",
+    "responses_count": "{n} responses",
+    "share": "Share",
+    "share_of": "{percent} of tokens",
+    "tab": "Overview",
+    "tokens": "Tokens",
+    "total": "Total",
+    "totals": "Totals"
+  },
   "pace": {
     "exhausted": "Limit reached",
     "projected": "≈ {percent}% by reset",

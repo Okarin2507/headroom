@@ -36,8 +36,10 @@ export type Report = {
   sessionStart: number, -- Unix seconds the "session" period starts from
   lastActivity: number, -- 0 when nothing was used in the last 30 days
   sessions: number, -- conversations touched in the last 7 days
-  periods: { session: Totals, today: Totals, week: Totals, month: Totals },
+  periods: { session: Totals, today: Totals, day: Totals, week: Totals, month: Totals }, -- day = the last 24 hours
   models: { (Totals & { name: string }) }, -- last 7 days, busiest first
+  modelsDay: { (Totals & { name: string }) }, -- last 24 hours, busiest first
+  hours: { (Totals & { hour: string }) }, -- last 24 clock hours, oldest first ("14" = 14:00)
   days: { (Totals & { date: string, weekday: string }) }, -- last 7 days, oldest first
 }
 
@@ -71,9 +73,15 @@ function M.parse(data: any): Report?
   if type(data) ~= "table" or type(data.periods) ~= "table" then
     return nil
   end
-  local models, days = {}, {}
+  local models, modelsDay, days, hours = {}, {}, {}, {}
   for _, model in (if type(data.models) == "table" then data.models else {}) do
     table.insert(models, withField(model, "name", "?"))
+  end
+  for _, model in (if type(data.modelsDay) == "table" then data.modelsDay else {}) do
+    table.insert(modelsDay, withField(model, "name", "?"))
+  end
+  for _, hour in (if type(data.hours) == "table" then data.hours else {}) do
+    table.insert(hours, withField(hour, "hour", ""))
   end
   for _, day in (if type(data.days) == "table" then data.days else {}) do
     local entry = withField(day, "date", "")
@@ -88,11 +96,14 @@ function M.parse(data: any): Report?
     periods = {
       session = totals(data.periods.session),
       today = totals(data.periods.today),
+      day = totals(data.periods.day),
       week = totals(data.periods.week),
       month = totals(data.periods.month),
     },
     models = models,
+    modelsDay = modelsDay,
     days = days,
+    hours = hours,
   }
 end
 

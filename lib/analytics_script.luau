@@ -225,8 +225,12 @@ def main():
     today_start = local_today.timestamp()
     day_starts = [(local_today - datetime.timedelta(days=n)) for n in range(6, -1, -1)]
 
-    periods = {name: blank() for name in ("session", "today", "week", "month")}
+    periods = {name: blank() for name in ("session", "today", "day", "week", "month")}
     models, days, sessions = {}, [blank() for _ in day_starts], set()
+    # The last 24 hours, one bucket per clock hour, oldest first; and the models in them.
+    this_hour = datetime.datetime.fromtimestamp(now).replace(minute=0, second=0, microsecond=0)
+    hour_starts = [(this_hour - datetime.timedelta(hours=n)) for n in range(23, -1, -1)]
+    hours, models_day = [blank() for _ in hour_starts], {}
     last = 0
     if not start or start > now:
         start = now - 5 * 3600
@@ -244,6 +248,15 @@ def main():
             add(slot, rec)
         if ts >= today_start:
             add(periods["today"], rec)
+        if age <= 86400:
+            add(periods["day"], rec)
+            add(models_day.setdefault(model, blank()), rec)
+            for idx, hour in enumerate(hour_starts):
+                lo = hour.timestamp()
+                hi = hour_starts[idx + 1].timestamp() if idx < 23 else now + 1
+                if lo <= ts < hi:
+                    add(hours[idx], rec)
+                    break
         if ts >= start:
             add(periods["session"], rec)
         for idx, day in enumerate(day_starts):
@@ -253,9 +266,10 @@ def main():
                 add(days[idx], rec)
                 break
 
-    for p in list(periods.values()) + list(models.values()) + days:
+    for p in list(periods.values()) + list(models.values()) + list(models_day.values()) + days + hours:
         p["total"] = p["input"] + p["output"]
     top = sorted(models.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
+    top_day = sorted(models_day.items(), key=lambda kv: kv[1]["total"], reverse=True)[:6]
     print(
         json.dumps(
             {
@@ -264,6 +278,8 @@ def main():
                 "lastActivity": int(last),
                 "periods": periods,
                 "models": [dict(m, name=n) for n, m in top],
+                "modelsDay": [dict(m, name=n) for n, m in top_day],
+                "hours": [dict(h, hour=hour_starts[i].strftime("%H")) for i, h in enumerate(hours)],
                 "days": [dict(d, date=day_starts[i].strftime("%Y-%m-%d"), weekday=day_starts[i].strftime("%a")) for i, d in enumerate(days)],
                 "sessions": len(sessions),
             },
