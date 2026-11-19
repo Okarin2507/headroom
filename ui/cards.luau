@@ -249,21 +249,22 @@ local function dayChart(days)
   for i, day in days do
     local height = if peak > 0 and day.total > 0 then math.max(3, math.floor(day.total / peak * CHART_HEIGHT + 0.5)) else 2
     local isToday = i == #days
+    -- The value and the bar share one slot as tall as the tallest bar plus its
+    -- label, so every weekday name sits on the same line whatever the bar.
     table.insert(columns, ui.column({
       key = day.date,
       flexGrow = 1,
       align = "center",
-      justify = "end",
-      gap = 3,
-      height = CHART_HEIGHT + 30,
+      gap = 4,
     }, {
-      M.caption(if day.total > 0 then analytics.compact(day.total) else " ", if isToday then "on_surface" else nil, { fontSize = 9 }),
-      ui.box({
-        width = 18,
-        height = height,
-        radius = 3,
-        fill = if day.total == 0 then "on_surface/0.10" elseif isToday then "primary" else "primary/0.5",
-        tooltip = noctalia.tr("analytics.day_tooltip", { day = day.date, tokens = inOut(day) }),
+      ui.column({ align = "center", justify = "end", gap = 3, height = CHART_HEIGHT + 20 }, {
+        M.caption(if day.total > 0 then analytics.compact(day.total) else " ", if isToday then "on_surface" else nil, { fontSize = 9 }),
+        ui.box({
+          width = 18,
+          height = height,
+          fill = if day.total == 0 then "on_surface/0.10" elseif isToday then "primary" else "primary/0.5",
+          tooltip = noctalia.tr("analytics.day_tooltip", { day = day.date, tokens = inOut(day) }),
+        }),
       }),
       M.caption(day.weekday, if isToday then "on_surface" else nil, { fontSize = 10, fontWeight = if isToday then "semibold" else "regular" }),
     }))
