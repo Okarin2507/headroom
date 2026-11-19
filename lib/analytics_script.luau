@@ -35,48 +35,101 @@ def clean_model(name):
     return name or "unknown"
 
 
+CACHE_VERSION = 1
+
+
+def cache_path():
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    return os.path.join(base, "headroom", "claude-usage.json")
+
+
+def load_cache():
+    try:
+        with open(cache_path(), "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+        if doc.get("v") == CACHE_VERSION and isinstance(doc.get("files"), dict):
+            return doc["files"]
+    except (OSError, ValueError, AttributeError):
+        pass
+    return {}
+
+
+def save_cache(files):
+    # Only token counts, timestamps and model names per transcript, never message text.
+    path = cache_path()
+    tmp = path + ".tmp"
+    try:
+        os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"v": CACHE_VERSION, "files": files}, fh, separators=(",", ":"))
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def claude_file(path):
+    """Every assistant usage record of one transcript: [id, requestId, ts, model, input, output]."""
+    out = []
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if '"usage"' not in line or '"assistant"' not in line:
+                continue
+            try:
+                obj = json.loads(line)
+            except ValueError:
+                continue
+            msg = obj.get("message")
+            if obj.get("type") != "assistant" or not isinstance(msg, dict):
+                continue
+            usage = msg.get("usage")
+            model = msg.get("model")
+            if not isinstance(usage, dict) or not model or model.startswith("<"):
+                continue
+            try:
+                ts = datetime.datetime.fromisoformat(obj["timestamp"].replace("Z", "+00:00")).timestamp()
+            except Exception:
+                continue
+            out.append(
+                [
+                    msg.get("id") or "",
+                    obj.get("requestId") or "",
+                    ts,
+                    model,
+                    # Input is what the model read anew: prompt tokens not
+                    # re-served from the prompt cache.
+                    int(usage.get("input_tokens") or 0) + int(usage.get("cache_creation_input_tokens") or 0),
+                    int(usage.get("output_tokens") or 0),
+                ]
+            )
+    return out
+
+
 def claude_records(dirs, cutoff):
+    # A transcript only grows, so its records are reused from the cache until its
+    # size or modification time changes; only the live session is parsed again.
+    cache = load_cache()
+    fresh = {}
     seen = {}
-    sessions = {}
     for root in dirs:
         for path in glob.glob(os.path.join(root, "projects", "**", "*.jsonl"), recursive=True):
             try:
-                if os.path.getmtime(path) < cutoff:
+                st = os.stat(path)
+                if st.st_mtime < cutoff:
                     continue
-                with open(path, "r", encoding="utf-8", errors="replace") as fh:
-                    for line in fh:
-                        if '"usage"' not in line or '"assistant"' not in line:
-                            continue
-                        try:
-                            obj = json.loads(line)
-                        except ValueError:
-                            continue
-                        msg = obj.get("message")
-                        if obj.get("type") != "assistant" or not isinstance(msg, dict):
-                            continue
-                        usage = msg.get("usage")
-                        model = msg.get("model")
-                        if not isinstance(usage, dict) or not model or model.startswith("<"):
-                            continue
-                        try:
-                            ts = datetime.datetime.fromisoformat(obj["timestamp"].replace("Z", "+00:00")).timestamp()
-                        except Exception:
-                            continue
-                        key = (msg.get("id") or "", obj.get("requestId") or "", path if not msg.get("id") else "")
-                        seen[key] = (
-                            ts,
-                            model,
-                            {
-                                # Input is what the model read anew: prompt tokens not
-                                # re-served from the prompt cache.
-                                "input": int(usage.get("input_tokens") or 0) + int(usage.get("cache_creation_input_tokens") or 0),
-                                "output": int(usage.get("output_tokens") or 0),
-                                "messages": 1,
-                            },
-                            path,
-                        )
+                entry = cache.get(path)
+                if entry and entry[0] == st.st_mtime and entry[1] == st.st_size:
+                    records = entry[2]
+                else:
+                    records = claude_file(path)
+                fresh[path] = [st.st_mtime, st.st_size, records]
             except OSError:
                 continue
+            for mid, req, ts, model, tin, tout in records:
+                key = (mid, req, path if not mid else "")
+                seen[key] = (ts, model, {"input": tin, "output": tout, "messages": 1}, path)
+    if fresh != cache:
+        save_cache(fresh)
     for ts, model, rec, path in seen.values():
         yield ts, clean_model(model), rec, path
 

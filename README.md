@@ -173,7 +173,7 @@ Everything is on one page: Settings → Plugins → Headroom, or middle-click th
 | `critical_percent` | `int` | `90` | Usage at or above this turns red and can send a notification. |
 | `notify` | `bool` | `true` | Notifies once when a window crosses `critical_percent`, and again when it resets. |
 | `analytics` | `bool` | `true` | Shows token usage (needs `python3`). Collected at most every 2 minutes. |
-| `refresh_minutes` | `int` | `5` | Minutes between fetches for each provider (1–120). Claude is never fetched more often than every 10 minutes: its usage endpoint throttles hard. Failed fetches retry sooner; throttled ones wait longer (10 minutes at first, up to an hour), and that wait survives a plugin reload. |
+| `refresh_minutes` | `int` | `10` | Minutes between fetches for each provider (1–120). Claude is never fetched more often than every 10 minutes: its usage endpoint throttles hard. Failed fetches retry sooner; throttled ones wait longer (10 minutes at first, up to an hour), and that wait survives a plugin reload. |
 
 Healthy meters use your theme's primary color, so amber and red always stand out. Logos keep their brand colors.
 
@@ -231,6 +231,10 @@ noctalia msg plugin okarin/headroom:poller all refresh
   - `python3 -I -c <script> <opencode folder>`, to read the access token of your OpenCode login from opencode's database
     (read-only; the token stays in memory, is reused for 10 minutes and is sent only to `opencode.ai`). Plus
     `GET https://opencode.ai/console/api/go/status` for the Go plan's limits. Headroom never renews that login.
+  - The token-usage script keeps one small cache, `$XDG_CACHE_HOME/headroom/claude-usage.json` (default
+    `~/.cache/headroom/`, mode 0600): per Claude transcript, only its timestamps, model names and token counts, never
+    message text. Unchanged transcripts are not parsed again, which makes a scan about 4× cheaper. Delete the file
+    to rebuild it; Claude's own files are never written.
 - **The endpoints are undocumented** and can change without notice. If a card says *Unexpected response*, please
   [open an issue](https://github.com/ayagmar/headroom/issues).
 - **Source and issues** live at [github.com/ayagmar/headroom](https://github.com/ayagmar/headroom), along with the
